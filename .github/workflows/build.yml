@@ -1,35 +1,98 @@
-# Builds installable packages for Linux and Windows.
+# Builds installable packages for Windows and Linux.
 #
 # The Windows job exists because Flutter cannot cross-compile desktop targets —
 # a .exe has to be produced on Windows, and this provides one without needing a
 # Windows machine to hand.
 #
-# Run it from the Actions tab, or on any push to main. Finished builds appear
-# under the run's "Artifacts".
+# To run it: Actions tab → "Build" → "Run workflow". It also runs on every push
+# to master or dev. Finished builds appear under the run's "Artifacts".
 
 name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [master, dev]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 jobs:
-  linux:
+  # Runs first and gates the builds: if the tests fail there is no point
+  # producing installers.
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+      - run: flutter pub get
+      # Generated Drift code is committed, so regenerate over the top rather
+      # than failing on conflicting outputs.
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter analyze
+      - run: flutter test
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter build windows --release
+
+      # The portable folder is the build itself: churchms.exe plus the DLLs and
+      # data/ directory it needs beside it. Useful even without an installer.
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: church-management-windows-portable
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+
+      # Inno Setup turns that folder into a single setup.exe. It is not part of
+      # the runner image by default, so install it rather than assuming.
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+        shell: pwsh
+
+      - name: Build installer
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup not found at $iscc"
+          }
+          & $iscc "packaging\windows-installer.iss"
+        shell: pwsh
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: church-management-windows-setup
+          path: dist/*.exe
+          if-no-files-found: error
+
+  linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
       - run: flutter pub get
-      - run: dart run build_runner build
-      - run: flutter analyze
-      - run: flutter test
+      - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter build linux --release
       - name: Package .deb
         run: ./packaging/build-deb.sh
@@ -37,27 +100,4 @@ jobs:
         with:
           name: church-management-linux-deb
           path: dist/*.deb
-
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-      - run: flutter pub get
-      - run: dart run build_runner build
-      - run: flutter build windows --release
-      - name: Build installer
-        # Inno Setup ships on the GitHub Windows runners.
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows-installer.iss
-        shell: pwsh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: church-management-windows-setup
-          path: dist/*.exe
-      - uses: actions/upload-artifact@v4
-        with:
-          name: church-management-windows-portable
-          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
