@@ -1,0 +1,33 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+
+# Built packages — these are release artefacts, not source. Attach them to a
+# GitHub Release instead of committing them.
+dist/
+
+# Generated Drift code is committed on purpose: it keeps `flutter test` and a
+# fresh clone working without running build_runner first.
+# (No ignore rule for *.g.dart.)
+
+# The local database is a user's own church records — never commit it.
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+
+# Playwright / node helpers used during development
+node_modules/
+package-lock.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
