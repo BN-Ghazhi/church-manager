@@ -7,8 +7,31 @@ machines, and building for Windows.
 
 ## 1. Install on this machine
 
+**Double-click to install:**
+
 ```bash
 flutter build linux --release      # if you have changed the code
+./packaging/build-installer.sh
+```
+
+Then open the `dist/` folder in Files and double-click
+**"Install Church Management"**. It installs for your user only — no terminal,
+no password, no package manager.
+
+Two files are produced, and they must stay in the same folder:
+
+| File | What it is |
+|---|---|
+| `Install Church Management.desktop` | What you double-click |
+| `Install-Church-Management.run` | The payload it runs |
+
+A `.desktop` launcher is used because GNOME opens `.run` files in a text editor
+rather than executing them, and on this machine `.deb` files are registered to
+snap-store, which cannot install them.
+
+**From a terminal instead:**
+
+```bash
 ./packaging/install-linux.sh
 ```
 

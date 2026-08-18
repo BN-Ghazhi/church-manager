@@ -58,10 +58,12 @@ Password for all: `church2026`. **Change these before entering real data.**
 
 ```bash
 flutter build linux --release
-./packaging/install-linux.sh
+./packaging/build-installer.sh
 ```
 
-It then appears in your applications menu as **Church Management**.
+Then double-click **"Install Church Management"** in the `dist/` folder — no
+terminal or password needed. It appears in your applications menu as
+**Church Management**.
 
 To share with other Linux machines, `./packaging/build-deb.sh` produces a
 ~10 MB `.deb` that installs with `sudo apt install ./church-management_*.deb`.
