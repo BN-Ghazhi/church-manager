@@ -7,33 +7,34 @@ machines, and building for Windows.
 
 ## 1. Install on this machine
 
-**Double-click to install:**
-
 ```bash
 flutter build linux --release      # if you have changed the code
 ./packaging/build-installer.sh
+./dist/Install-Church-Management.run
 ```
 
-Then open the `dist/` folder in Files and double-click
-**"Install Church Management"**. It installs for your user only — no terminal,
-no password, no package manager.
+That installs it and opens it. No password, no package manager.
 
-Two files are produced, and they must stay in the same folder:
+### Why there is no clickable installer file
 
-| File | What it is |
-|---|---|
-| `Install Church Management.desktop` | What you double-click |
-| `Install-Church-Management.run` | The payload it runs |
+Modern GNOME (this machine runs Shell 50) **refuses to execute `.desktop` files
+from ordinary folders**, and the old `metadata::trusted` flag that used to permit
+it no longer exists. A launcher placed in `dist/` therefore opens in a text
+editor — VS Code, here — instead of running.
 
-A `.desktop` launcher is used because GNOME opens `.run` files in a text editor
-rather than executing them, and on this machine `.deb` files are registered to
-snap-store, which cannot install them.
+`.deb` files fare no better: they are registered to snap-store, which cannot
+install them.
 
-**From a terminal instead:**
+So the terminal command above is the honest one-step route. If you would rather
+click, register the installer into the applications menu first, which *is* a
+location GNOME trusts:
 
 ```bash
-./packaging/install-linux.sh
+./dist/register-installer.sh
 ```
+
+Then search your applications menu for **"Install Church Management"** and click
+it. That only needs doing once; afterwards it behaves like any other app.
 
 It then appears in the applications menu as **Church Management**, and as
 `churchms` in a terminal.

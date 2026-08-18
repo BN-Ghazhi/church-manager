@@ -53,14 +53,17 @@ ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
 
 # When double-clicked there is no terminal to read, so report through a dialog
 # if one is available and fall back to stdout otherwise.
+# Reports progress without blocking. A modal dialog that waits for a click
+# leaves the installer looking hung when nobody is watching, so the notice
+# closes itself and the process never waits on it.
 notify() {
   local title="$1" body="$2"
+  printf '%s\n%s\n' "$title" "$body"
   if command -v zenity >/dev/null 2>&1; then
-    zenity --info --title="$title" --text="$body" --width=420 2>/dev/null || true
-  elif command -v kdialog >/dev/null 2>&1; then
-    kdialog --msgbox "$body" 2>/dev/null || true
-  else
-    printf '%s\n%s\n' "$title" "$body"
+    ( zenity --info --title="$title" --text="$body" --width=420 \
+        --timeout=12 >/dev/null 2>&1 || true ) &
+  elif command -v notify-send >/dev/null 2>&1; then
+    notify-send "$title" "$body" 2>/dev/null || true
   fi
 }
 
@@ -120,13 +123,9 @@ Your data is kept separately at:
 $DATA_DIR
 and survives reinstalling."
 
-# Offer to open it straight away.
-if command -v zenity >/dev/null 2>&1; then
-  if zenity --question --title="$APP_NAME" \
-       --text="Open $APP_NAME now?" --width=320 2>/dev/null; then
-    setsid "$INSTALL_DIR/churchms" >/dev/null 2>&1 < /dev/null &
-  fi
-fi
+# Open the app straight away: someone who just ran an installer wants to see the
+# thing they installed. Detached, so the installer exits immediately.
+setsid "$INSTALL_DIR/churchms" >/dev/null 2>&1 < /dev/null &
 
 exit 0
 __PAYLOAD_BELOW__
@@ -143,38 +142,55 @@ cp -a "$BUNDLE/." "$STAGE/bundle/"
 tar czf - -C "$STAGE" . >> "$INSTALLER"
 chmod +x "$INSTALLER"
 
-# GNOME opens .run files in a text editor rather than executing them, so ship a
-# .desktop launcher alongside: desktop files ARE executed on double-click.
+# Modern GNOME (42+, and strictly from 50) refuses to execute .desktop files
+# from arbitrary folders, and the old metadata::trusted flag no longer exists.
+# A launcher sitting in dist/ therefore opens in a text editor rather than
+# running — which is exactly what happens on this machine.
 #
-# Exec must be a plain command — the desktop-entry spec forbids shell syntax
-# there — so the launcher points at a tiny wrapper that locates the payload
-# beside itself and runs it.
-WRAPPER="$OUT/.install-church-management"
-cat > "$WRAPPER" <<'WRAP'
+# So instead of shipping a clickable file, register the installer in the
+# applications menu, where GNOME does trust launchers. `register-installer.sh`
+# does that; from then on the installer is a menu entry like any other app.
+cat > "$OUT/register-installer.sh" <<REGISTER
 #!/usr/bin/env bash
-# Runs the installer sitting next to this script.
+#
+# Adds "Install Church Management" to your applications menu.
+#
+# Needed because GNOME will not run a .desktop file from a normal folder — it
+# only trusts launchers already registered in the applications directory.
 set -euo pipefail
-cd "$(dirname "$(readlink -f "$0")")"
-exec ./Install-Church-Management.run
-WRAP
-chmod +x "$WRAPPER"
 
-LAUNCHER="$OUT/Install $APP_NAME.desktop"
-cat > "$LAUNCHER" <<LAUNCH
+PAYLOAD="\$(cd "\$(dirname "\$(readlink -f "\$0")")" && pwd)/Install-Church-Management.run"
+APPS="\$HOME/.local/share/applications"
+
+[[ -f "\$PAYLOAD" ]] || { echo "Install-Church-Management.run is missing from this folder."; exit 1; }
+chmod +x "\$PAYLOAD"
+mkdir -p "\$APPS"
+
+cat > "\$APPS/church-management-installer.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=Install $APP_NAME
-Comment=Installs $APP_NAME for the current user; no password needed
-Exec=$WRAPPER
+Name=Install Church Management
+Comment=Installs Church Management for the current user
+Exec=\$PAYLOAD
 Icon=$PROJECT_ROOT/packaging/icon.png
 Terminal=false
 Categories=System;
-LAUNCH
-chmod +x "$LAUNCHER"
+DESKTOP
+
+command -v update-desktop-database >/dev/null 2>&1 \\
+  && update-desktop-database "\$APPS" 2>/dev/null || true
+
+echo "Added to your applications menu."
+echo "Search for \"Install Church Management\" and click it."
+REGISTER
+chmod +x "$OUT/register-installer.sh"
 
 echo "Built:"
 printf '  %s\t%s\n' "$(du -h "$INSTALLER" | cut -f1)" "$(basename "$INSTALLER")"
-printf '  %s\t%s\n' "$(du -h "$LAUNCHER"  | cut -f1)" "$(basename "$LAUNCHER")"
 echo
-echo "To install: double-click \"Install $APP_NAME\" in the dist folder."
-echo "From a terminal instead:  ./dist/Install-Church-Management.run"
+echo "Install now, one command:"
+echo "  ./dist/Install-Church-Management.run"
+echo
+echo "Or to get a clickable menu entry instead of using the terminal:"
+echo "  ./dist/register-installer.sh"
+echo "then search your applications menu for \"Install $APP_NAME\"."

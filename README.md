@@ -59,11 +59,13 @@ Password for all: `church2026`. **Change these before entering real data.**
 ```bash
 flutter build linux --release
 ./packaging/build-installer.sh
+./dist/Install-Church-Management.run
 ```
 
-Then double-click **"Install Church Management"** in the `dist/` folder — no
-terminal or password needed. It appears in your applications menu as
-**Church Management**.
+That installs and opens it, with no password needed, and it appears in your
+applications menu as **Church Management**. GNOME will not run a `.desktop`
+launcher from a normal folder, so there is no file to double-click — see
+[packaging/README.md](packaging/README.md) if you want a clickable menu entry.
 
 To share with other Linux machines, `./packaging/build-deb.sh` produces a
 ~10 MB `.deb` that installs with `sudo apt install ./church-management_*.deb`.
