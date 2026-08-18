@@ -69,9 +69,16 @@ to any Debian or Ubuntu machine:
 sudo apt install ./church-management_1.0.0_amd64.deb
 ```
 
-Double-clicking it in a file manager works too. It installs to
-`/opt/org.gracechapel.churchms`, adds the menu entry, and pulls in the GTK and
-SQLite libraries it needs. Remove it with `sudo apt remove church-management`.
+It installs to `/opt/org.gracechapel.churchms`, adds the menu entry, and pulls
+in the GTK and SQLite libraries it needs. Remove it with
+`sudo apt remove church-management`.
+
+**Double-clicking a `.deb` does not reliably work.** On Ubuntu with GNOME it
+often opens in snap-store, which cannot install `.deb` packages, so the window
+appears to do nothing. Either use the `apt install` command above, or install
+`gdebi` (`sudo apt install gdebi`) to get a working graphical installer. For
+click-to-install without any of that, use the self-extracting installer from
+section 1 — it needs no root and no package manager.
 
 Each machine gets its **own separate database**. Nothing is shared between
 installs — see "A caution about sharing" below.
