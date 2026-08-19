@@ -92,14 +92,14 @@ class Fixtures {
     String? branchId,
     String? departmentId,
     String name = 'Test User',
-    String? email,
+    String? username,
     String password = 'testpass1',
     bool? canSeeAllBranches,
   }) =>
       repo.createUser(
         name: name,
-        email: email ??
-            '${role.name}.${DateTime.now().microsecondsSinceEpoch}@example.com',
+        username: username ??
+            '${role.name}.${DateTime.now().microsecondsSinceEpoch}',
         password: password,
         role: role,
         branchId: branchId,

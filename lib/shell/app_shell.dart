@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../config/app_config.dart';
 import '../config/navigation.dart';
-import '../data/operations_data.dart' show permissionMatrix;
+import '../config/permissions.dart' show permissionMatrix;
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/collapsible.dart';
 import 'branch_switcher.dart';
 import 'command_palette.dart';
 import 'user_switcher.dart';
@@ -211,33 +212,32 @@ class _SidebarContent extends ConsumerWidget {
               children: [
                 for (final section in visibleSections) ...[
                   if (!collapsed)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md + 4,
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        AppSpacing.xs,
-                      ),
-                      child: Text(
-                        section.label.toUpperCase(),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.6,
-                          fontSize: 10,
-                        ),
-                      ),
+                    // Sections fold away so a sidebar of sixteen destinations
+                    // does not have to be read top to bottom every time. The
+                    // section holding the current page always stays open.
+                    _SectionHeader(
+                      label: section.label,
+                      collapsedKey: 'nav.${section.label}',
+                      containsCurrent: section.items.any((i) =>
+                          location == i.route ||
+                          location.startsWith('${i.route}/')),
                     )
                   else
                     const SizedBox(height: AppSpacing.sm),
-                  for (final item in section.items)
-                    _NavTile(
-                      item: item,
-                      selected: location == item.route ||
-                          location.startsWith('${item.route}/'),
-                      collapsed: collapsed,
-                      onTap: () => onNavigate(item.route),
-                    ),
+                  if (collapsed ||
+                      !ref.watch(collapsedSectionsProvider)
+                          .contains('nav.${section.label}') ||
+                      section.items.any((i) =>
+                          location == i.route ||
+                          location.startsWith('${i.route}/')))
+                    for (final item in section.items)
+                      _NavTile(
+                        item: item,
+                        selected: location == item.route ||
+                            location.startsWith('${item.route}/'),
+                        collapsed: collapsed,
+                        onTap: () => onNavigate(item.route),
+                      ),
                 ],
               ],
             ),
@@ -246,6 +246,66 @@ class _SidebarContent extends ConsumerWidget {
           const Divider(height: 1),
           UserSwitcher(collapsed: collapsed),
         ],
+      ),
+    );
+  }
+}
+
+/// A foldable sidebar group heading.
+class _SectionHeader extends ConsumerWidget {
+  const _SectionHeader({
+    required this.label,
+    required this.collapsedKey,
+    required this.containsCurrent,
+  });
+
+  final String label;
+  final String collapsedKey;
+
+  /// The section holding the page you are on cannot be folded away — hiding the
+  /// highlighted item would leave no indication of where you are.
+  final bool containsCurrent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final folded =
+        !containsCurrent && ref.watch(collapsedSectionsProvider).contains(collapsedKey);
+
+    return InkWell(
+      onTap: containsCurrent
+          ? null
+          : () => ref
+              .read(collapsedSectionsProvider.notifier)
+              .toggle(collapsedKey),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xs,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              folded ? Icons.chevron_right : Icons.expand_more,
+              size: 14,
+              color: scheme.onSurfaceVariant
+                  .withValues(alpha: containsCurrent ? 0.35 : 0.8),
+            ),
+            const SizedBox(width: 2),
+            Text(
+              label.toUpperCase(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

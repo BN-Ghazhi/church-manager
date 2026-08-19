@@ -136,8 +136,14 @@ class UserAccounts extends Table with _Timestamps {
   TextColumn get id => text()();
   TextColumn get name => text()();
 
-  /// Lower-cased at write time; the unique index makes it the login key.
-  TextColumn get email => text().unique()();
+  /// The sign-in name. Lower-cased at write time, and unique.
+  ///
+  /// A username rather than an email address: a church office is not a place
+  /// where everyone has a work email, and asking for one to log in excludes the
+  /// people most likely to be using this. The consequence is that there is no
+  /// address to send a password reset to, so a Super Admin resets passwords
+  /// from Roles & Access instead.
+  TextColumn get username => text().unique()();
 
   /// PBKDF2-derived, never the plain password. See `lib/db/password.dart`.
   TextColumn get passwordHash => text()();

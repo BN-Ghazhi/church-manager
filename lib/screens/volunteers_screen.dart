@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../widgets/collapsible.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -54,7 +55,8 @@ class VolunteersScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'volunteers.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [

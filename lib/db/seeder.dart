@@ -34,7 +34,7 @@ class Seeder {
   /// Shown on the sign-in screen, because on a fresh install there is no other
   /// way in. **Change this password before the app holds real records** — it is
   /// public in the source and therefore not a secret.
-  static const firstAdminEmail = 'admin@kgc.org';
+  static const firstAdminUsername = 'admin';
   static const firstAdminPassword = 'church2026';
   static const firstAdminName = 'Administrator';
 
@@ -79,7 +79,7 @@ class Seeder {
     await db.into(db.userAccounts).insert(UserAccountsCompanion.insert(
           id: 'usr-0001',
           name: firstAdminName,
-          email: firstAdminEmail.toLowerCase(),
+          username: firstAdminUsername,
           passwordHash: Password.hash(firstAdminPassword, salt),
           passwordSalt: salt,
           role: UserRole.superAdmin.name,

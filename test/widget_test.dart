@@ -1,6 +1,6 @@
-import 'package:churchms/data/dashboard_data.dart';
-import 'package:churchms/data/events_data.dart';
-import 'package:churchms/data/finance_data.dart';
+import 'package:churchms/aggregates/dashboard.dart';
+import 'package:churchms/aggregates/attendance.dart';
+import 'package:churchms/aggregates/finance.dart';
 import 'package:churchms/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 

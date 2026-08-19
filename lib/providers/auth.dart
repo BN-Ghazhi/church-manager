@@ -44,17 +44,17 @@ class SessionNotifier extends Notifier<StaffUser?> {
   @override
   StaffUser? build() => null;
 
-  Future<SignInResult> signIn(String email, String password) async {
-    if (email.trim().isEmpty || password.isEmpty) {
-      return const SignInFailure('Enter your email and password.');
+  Future<SignInResult> signIn(String username, String password) async {
+    if (username.trim().isEmpty || password.isEmpty) {
+      return const SignInFailure('Enter your username and password.');
     }
 
-    final user = await ref.read(repositoryProvider).signIn(email, password);
+    final user = await ref.read(repositoryProvider).signIn(username, password);
 
     if (user == null) {
-      // Deliberately identical for unknown email, wrong password and suspended
-      // account — a different message for each would let someone enumerate
-      // valid addresses.
+      // Deliberately identical for unknown username, wrong password and
+      // suspended account — a different message for each would let someone
+      // enumerate valid accounts.
       return const SignInFailure(
         'Those details did not match an active account.',
       );

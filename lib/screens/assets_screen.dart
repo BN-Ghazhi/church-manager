@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../providers/auth.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
+import '../widgets/feedback.dart';
+import '../providers/permissions.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../utils/formatters.dart';
@@ -49,7 +54,8 @@ class AssetsScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'assets.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -181,10 +187,67 @@ class AssetsScreen extends ConsumerWidget {
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
+              TableColumn<AssetItem>(
+                id: 'actions',
+                header: '',
+                width: 116,
+                cell: (a) => RowActions(
+                  onView: () => _showAsset(context, ref, a),
+                  onEdit: () => showAssetForm(context, asset: a),
+                  onDelete: () => _deleteAsset(context, ref, a),
+                ),
+              ),
             ],
           ),
         ),
       ],
     );
   }
+}
+
+void _showAsset(BuildContext context, WidgetRef ref, AssetItem asset) {
+  showDetailSheet<void>(
+    context,
+    title: asset.name,
+    subtitle: '${asset.category} · ${asset.condition.label}',
+    children: [
+      DetailRows(entries: {
+        'Category': asset.category,
+        'Serial number': asset.serial,
+        'Condition': asset.condition.label,
+        'Location': asset.location,
+        'Purchased': Fmt.date(asset.purchasedAt),
+        'Value': Fmt.currency(asset.value),
+        'Branch': ref.read(branchNameProvider(asset.branchId)),
+      }),
+    ],
+    actions: [
+      if (ref.read(canEditProvider('Assets')))
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showAssetForm(context, asset: asset);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit'),
+        ),
+    ],
+  );
+}
+
+Future<void> _deleteAsset(
+  BuildContext context,
+  WidgetRef ref,
+  AssetItem asset,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: asset.name,
+    consequence: 'It leaves the register, and the total asset value drops by '
+        '${Fmt.currency(asset.value)}.',
+  );
+  if (!ok || !context.mounted) return;
+  await ref.read(repositoryProvider).deleteAsset(asset.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, '${asset.name} removed from the register.');
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../widgets/collapsible.dart';
 import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/auth.dart';
@@ -72,7 +73,8 @@ class AccessScreen extends ConsumerWidget {
 
         const _ScopeExplainer(),
 
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'access.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -116,7 +118,7 @@ class AccessScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         flex: 3,
-                        child: PersonTile(name: u.name, secondary: u.email),
+                        child: PersonTile(name: u.name, secondary: u.username),
                       ),
                       Expanded(
                         flex: 2,

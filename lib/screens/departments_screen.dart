@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../widgets/collapsible.dart';
 import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/permissions.dart';
@@ -68,7 +69,8 @@ class DepartmentsScreen extends ConsumerWidget {
           ],
         ),
 
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'departments.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [

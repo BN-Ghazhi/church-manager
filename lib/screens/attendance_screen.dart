@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
 import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
@@ -70,7 +72,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'attendance.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -127,6 +130,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             rows: records,
             rowId: (r) => r.id,
             pageSize: 10,
+            onRowTap: (r) => _showService(context, ref, r),
             searchHint: 'Search by service…',
             searchable: (r) => r.serviceName,
             filters: [
@@ -180,6 +184,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       .textTheme
                       .bodySmall
                       ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              TableColumn<AttendanceRecord>(
+                id: 'actions',
+                header: '',
+                width: 116,
+                cell: (r) => RowActions(
+                  onView: () => _showService(context, ref, r),
+                  onEdit: () => showServiceRecordForm(context, record: r),
+                  onDelete: () => _deleteService(context, ref, r),
                 ),
               ),
             ],
@@ -287,4 +301,115 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       ],
     );
   }
+}
+
+/// One service, including the names of everyone checked in.
+void _showService(
+  BuildContext context,
+  WidgetRef ref,
+  AttendanceRecord record,
+) {
+  showDetailSheet<void>(
+    context,
+    title: record.serviceName,
+    subtitle:
+        '${Fmt.date(record.date)} · ${Fmt.number(record.total)} present',
+    children: [
+      DetailRows(entries: {
+        'Date': Fmt.date(record.date),
+        'Adults': Fmt.number(record.adults),
+        'Children': Fmt.number(record.children),
+        'Visitors': Fmt.number(record.visitors),
+        'Online': Fmt.number(record.online),
+        'Total': Fmt.number(record.total),
+        'Branch': ref.read(branchNameProvider(record.branchId)),
+      }),
+      const SizedBox(height: AppSpacing.lg),
+      _Attendees(attendanceId: record.id),
+    ],
+    actions: [
+      if (ref.read(canEditProvider('Attendance')))
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showServiceRecordForm(context, record: record);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit'),
+        ),
+    ],
+  );
+}
+
+class _Attendees extends ConsumerWidget {
+  const _Attendees({required this.attendanceId});
+
+  final String attendanceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final attendees = ref.watch(serviceAttendeesProvider(attendanceId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Members checked in', style: theme.textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.sm),
+        attendees.when(
+          loading: () => const SizedBox(
+            height: 24,
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          error: (e, _) =>
+              Text('Could not load the list: $e',
+                  style: theme.textTheme.bodySmall),
+          data: (members) => members.isEmpty
+              ? Text(
+                  'The headcount was entered without individual check-ins, so '
+                  'there are no names against this service.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                )
+              : Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    for (final m in members)
+                      Chip(
+                        visualDensity: VisualDensity.compact,
+                        avatar: Icon(Icons.check,
+                            size: 14, color: theme.colorScheme.primary),
+                        label: Text(m.fullName),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _deleteService(
+  BuildContext context,
+  WidgetRef ref,
+  AttendanceRecord record,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: '${record.serviceName} on ${Fmt.date(record.date)}',
+    consequence: 'Attendance trends and averages will be recalculated without '
+        'it, and its check-ins stop counting towards member attendance.',
+  );
+  if (!ok || !context.mounted) return;
+  await ref.read(repositoryProvider).deleteAttendanceRecord(record.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, 'Service record removed.');
 }

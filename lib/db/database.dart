@@ -59,13 +59,31 @@ class AppDatabase extends _$AppDatabase {
   /// Whether opening a freshly created database should populate it.
   bool _autoSeed = true;
 
+  /// 2 — accounts sign in with a username rather than an email address.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          // v1 → v2: `user_accounts.email` became `username`. Existing installs
+          // hold real accounts, so the column is renamed in place and the local
+          // part of each address becomes the username — `grace@kgc.org` signs in
+          // as `grace`, with the same password. Dropping and re-seeding would
+          // have locked people out of their own data.
+          if (from < 2) {
+            await customStatement(
+                'ALTER TABLE user_accounts RENAME COLUMN email TO username');
+            await customStatement(
+              "UPDATE user_accounts SET username = "
+              "lower(CASE WHEN instr(username, '@') > 0 "
+              "THEN substr(username, 1, instr(username, '@') - 1) "
+              "ELSE username END)",
+            );
+          }
         },
         beforeOpen: (details) async {
           // Foreign keys are off by default in SQLite; without this the
@@ -245,7 +263,7 @@ extension UserAccountMapping on UserAccountRow {
   domain.StaffUser toDomain() => domain.StaffUser(
         id: id,
         name: name,
-        email: email,
+        username: username,
         role: domain.UserRole.values.byName(role),
         lastActiveAt: lastActiveAt ?? DateTime.now().toUtc(),
         status: domain.AccountStatus.values.byName(status),

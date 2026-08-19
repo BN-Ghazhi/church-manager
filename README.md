@@ -49,8 +49,18 @@ First run:
 
 | | |
 |---|---|
-| Email | `admin@kgc.org` |
+| Username | `admin` |
 | Password | `church2026` |
+
+If you installed an earlier version, your existing accounts are migrated
+automatically the first time you open this one: the part of your old email
+address before the `@` becomes your username, and your password is unchanged.
+So `grace@kgc.org` signs in as `grace`.
+
+Sign-in uses a **username**, not an email address — a church office is not a
+place where everyone has a work email, and requiring one shuts out the people
+most likely to be using this. Members do not need an email address either; the
+field is optional on the member form.
 
 **Change that password once you are in.** It is published in this repository, so
 it protects nothing.
@@ -123,8 +133,8 @@ flutter create --platforms=android,ios .
 
 | Route | What it does |
 |---|---|
-| `/dashboard` | KPIs, attendance and finance trends, activity feed, alerts |
-| `/branches` | Every campus with its pastor, size, giving and health |
+| `/dashboard` | Two tabs: **Dashboard** (KPIs, trends, activity, alerts) and **Reports** |
+| `/branches` | Table of every campus; click a row for its details in a modal |
 | `/departments` | Youth, Children and other departments, per branch |
 | `/members` | Directory with search, filter, sort and pagination |
 | `/members/:id` | Member profile: giving, serving, care and notes |
@@ -138,7 +148,6 @@ flutter create --platforms=android,ios .
 | `/discipleship` | Courses, enrolment and the growth pathway |
 | `/assets` | Equipment register with condition and value |
 | `/access` | Users, roles and the module permission matrix |
-| `/reports` | Report templates and scheduled reports |
 | `/settings` | Church profile, services, appearance, integrations |
 
 ## Multi-branch
@@ -158,10 +167,13 @@ their own branch and cannot see any other; a Super Admin sees everything.
 - Add a member, then close and reopen the app — they are still there
 - Sign in as a Department Head and watch the sidebar shrink to what they may see
 - Use the **branch switcher** in the top bar to focus one campus or view all
-- Settings → **Reset to demo data** restores the original sample data
 - Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd> for the command palette
 - Toggle light/dark from the top right, or pick a mode in Settings
-- Sort, filter and search any table; click a member row to open their profile
+- Sort, filter and search any table; every row has **view, edit and delete**
+- Open **Attendance → a service record** to see exactly who was checked in
+- Open a member from the directory to see which services they attended
+- Collapse the stats row at the top of any page to give the table more room
+- Fold the sidebar's nav groups, or collapse the sidebar entirely
 - Resize the window — the sidebar becomes an icon rail, then a drawer, and
   tables drop non-essential columns
 
@@ -172,8 +184,8 @@ their own branch and cannot see any other; a Super Admin sees everything.
 | Church name, address, services, currency | `lib/config/app_config.dart` |
 | Colours, spacing, radius, type | `lib/theme/app_theme.dart` |
 | Navigation and screen list | `lib/config/navigation.dart` |
-| Sample data | `lib/data/` |
 | Domain model | `lib/models/models.dart` |
+| Ghana regions, phone format | `lib/config/ghana.dart` |
 | Where the API will plug in | `lib/providers/repository.dart` |
 
 ## Project layout
@@ -183,7 +195,8 @@ lib/
 ├── main.dart         Entry point and router
 ├── config/           Church profile and navigation
 ├── models/           The domain contract
-├── data/             Mock data (swap point for the API)
+├── db/               SQLite schema, repository and first-run seeder
+├── aggregates/       Pure functions over whatever the database returns
 ├── providers/        Riverpod providers — the data seam
 ├── screens/          One file per screen
 ├── shell/            Responsive navigation shell + command palette

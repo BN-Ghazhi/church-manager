@@ -45,15 +45,8 @@ const List<NavSection> navigation = [
       module: 'Members',
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
-      description: 'Church health at a glance — attendance, giving and growth.',
-    ),
-    NavItem(
-      title: 'Reports',
-      route: '/reports',
-      module: 'Reports',
-      icon: Icons.bar_chart_outlined,
-      selectedIcon: Icons.bar_chart,
-      description: 'Build, save and export reports across every module.',
+      description:
+          'Church health at a glance, with reports on the second tab.',
     ),
   ]),
   NavSection(label: 'Church', items: [

@@ -127,6 +127,24 @@ class ChurchRepository {
     );
   }
 
+  /// Soft-deletes a branch.
+  ///
+  /// Headquarters cannot be removed — every record needs somewhere to belong,
+  /// and deleting the last branch would leave the app with nowhere to file
+  /// anything. Members keep their rows; they simply stop being visible.
+  Future<void> deleteBranch(String branchId) async {
+    final branch = await (db.select(db.branches)
+          ..where((t) => t.id.equals(branchId)))
+        .getSingleOrNull();
+    if (branch == null || branch.isHeadquarters) return;
+
+    await (db.update(db.branches)..where((t) => t.id.equals(branchId)))
+        .write(BranchesCompanion(
+      deletedAt: Value(_now),
+      updatedAt: Value(_now),
+    ));
+  }
+
   /* ------------------------------------------------------------- members */
 
   Stream<List<domain.Member>> watchMembers() {
@@ -249,6 +267,166 @@ class ChurchRepository {
   Future<void> deleteMember(String id) =>
       (db.update(db.members)..where((t) => t.id.equals(id)))
           .write(MembersCompanion(deletedAt: Value(_now)));
+
+  /* ------------------------------------------- edits and soft deletes */
+
+  // Every table in the app is now editable and removable from its own row, so
+  // a mistyped amount or a wrong date is a correction rather than a permanent
+  // blemish. Deletes are soft throughout: the row keeps its history for
+  // reporting and simply drops out of every query.
+
+  Future<void> updateDonation(
+    String id, {
+    String? donorName,
+    double? amount,
+    domain.GivingFund? fund,
+    domain.PaymentMethod? method,
+    DateTime? date,
+    String? memberId,
+  }) =>
+      (db.update(db.donations)..where((t) => t.id.equals(id))).write(
+        DonationsCompanion(
+          donorName: _opt(donorName),
+          amount: _opt(amount),
+          fund: _opt(fund?.name),
+          method: _opt(method?.name),
+          date: _opt(date),
+          memberId: memberId == null ? const Value.absent() : Value(memberId),
+          updatedAt: Value(_now),
+        ),
+      );
+
+  Future<void> deleteDonation(String id) =>
+      (db.update(db.donations)..where((t) => t.id.equals(id)))
+          .write(DonationsCompanion(deletedAt: Value(_now)));
+
+  Future<void> updateExpense(
+    String id, {
+    String? category,
+    String? vendor,
+    double? amount,
+    DateTime? date,
+    domain.ExpenseStatus? status,
+  }) =>
+      (db.update(db.expenses)..where((t) => t.id.equals(id))).write(
+        ExpensesCompanion(
+          category: _opt(category),
+          vendor: _opt(vendor),
+          amount: _opt(amount),
+          date: _opt(date),
+          status: _opt(status?.name),
+          updatedAt: Value(_now),
+        ),
+      );
+
+  Future<void> deleteExpense(String id) =>
+      (db.update(db.expenses)..where((t) => t.id.equals(id)))
+          .write(ExpensesCompanion(deletedAt: Value(_now)));
+
+  Future<void> updateEvent(
+    String id, {
+    String? title,
+    String? description,
+    domain.EventCategory? category,
+    DateTime? startsAt,
+    DateTime? endsAt,
+    String? location,
+    int? expectedAttendance,
+  }) =>
+      (db.update(db.events)..where((t) => t.id.equals(id))).write(
+        EventsCompanion(
+          title: _opt(title),
+          description: _opt(description),
+          category: _opt(category?.name),
+          startsAt: _opt(startsAt),
+          endsAt: _opt(endsAt),
+          location: _opt(location),
+          expectedAttendance: _opt(expectedAttendance),
+          updatedAt: Value(_now),
+        ),
+      );
+
+  Future<void> deleteEvent(String id) =>
+      (db.update(db.events)..where((t) => t.id.equals(id)))
+          .write(EventsCompanion(deletedAt: Value(_now)));
+
+  Future<void> updateAsset(
+    String id, {
+    String? name,
+    String? category,
+    String? serial,
+    domain.AssetCondition? condition,
+    String? location,
+    DateTime? purchasedAt,
+    double? value,
+  }) =>
+      (db.update(db.assets)..where((t) => t.id.equals(id))).write(
+        AssetsCompanion(
+          name: _opt(name),
+          category: _opt(category),
+          serial: _opt(serial),
+          condition: _opt(condition?.name),
+          location: _opt(location),
+          purchasedAt: _opt(purchasedAt),
+          value: _opt(value),
+          updatedAt: Value(_now),
+        ),
+      );
+
+  Future<void> deleteAsset(String id) =>
+      (db.update(db.assets)..where((t) => t.id.equals(id)))
+          .write(AssetsCompanion(deletedAt: Value(_now)));
+
+  Future<void> updateAttendanceRecord(
+    String id, {
+    String? serviceName,
+    DateTime? date,
+    int? adults,
+    int? children,
+    int? visitors,
+    int? online,
+  }) =>
+      (db.update(db.attendanceRecords)..where((t) => t.id.equals(id))).write(
+        AttendanceRecordsCompanion(
+          serviceName: _opt(serviceName),
+          date: _opt(date),
+          adults: _opt(adults),
+          children: _opt(children),
+          visitors: _opt(visitors),
+          online: _opt(online),
+          updatedAt: Value(_now),
+        ),
+      );
+
+  /// Who was individually checked in at one service.
+  ///
+  /// The headcount says how many; this says which people, which is what makes
+  /// "was so-and-so in church?" answerable.
+  Stream<List<domain.Member>> watchServiceAttendees(String attendanceId) {
+    final query = db.select(db.checkIns).join([
+      innerJoin(db.members, db.members.id.equalsExp(db.checkIns.memberId)),
+    ])
+      ..where(db.checkIns.attendanceId.equals(attendanceId) &
+          db.members.deletedAt.isNull())
+      ..orderBy([OrderingTerm(expression: db.members.lastName)]);
+
+    return query.watch().map((rows) => rows
+        .map((r) => r.readTable(db.members).toDomain(departmentIds: const []))
+        .toList());
+  }
+
+  Future<void> deleteAttendanceRecord(String id) =>
+      (db.update(db.attendanceRecords)..where((t) => t.id.equals(id)))
+          .write(AttendanceRecordsCompanion(deletedAt: Value(_now)));
+
+  Future<void> deleteCareRequest(String id) =>
+      (db.update(db.careRequests)..where((t) => t.id.equals(id)))
+          .write(CareRequestsCompanion(deletedAt: Value(_now)));
+
+  /// `null` means "leave this column alone", which is what every update method
+  /// above wants for arguments the caller omitted.
+  static Value<T> _opt<T>(T? v) =>
+      v == null ? const Value.absent() : Value(v);
 
   /* --------------------------------------------------------- departments */
 
@@ -433,10 +611,11 @@ class ChurchRepository {
   /// Verifies credentials. Returns null when the email is unknown, the password
   /// is wrong, or the account is suspended — deliberately the same result in
   /// every case, so the response cannot be used to discover valid emails.
-  Future<domain.StaffUser?> signIn(String email, String password) async {
+  Future<domain.StaffUser?> signIn(String username, String password) async {
     final row = await (db.select(db.userAccounts)
           ..where((t) =>
-              t.email.equals(email.trim().toLowerCase()) & t.deletedAt.isNull()))
+              t.username.equals(username.trim().toLowerCase()) &
+              t.deletedAt.isNull()))
         .getSingleOrNull();
 
     if (row == null) return null;
@@ -458,16 +637,16 @@ class ChurchRepository {
     return row.toDomain();
   }
 
-  Future<bool> emailExists(String email) async {
+  Future<bool> usernameExists(String username) async {
     final row = await (db.select(db.userAccounts)
-          ..where((t) => t.email.equals(email.trim().toLowerCase())))
+          ..where((t) => t.username.equals(username.trim().toLowerCase())))
         .getSingleOrNull();
     return row != null;
   }
 
   Future<String> createUser({
     required String name,
-    required String email,
+    required String username,
     required String password,
     required domain.UserRole role,
     String? branchId,
@@ -482,7 +661,7 @@ class ChurchRepository {
     await db.into(db.userAccounts).insert(UserAccountsCompanion.insert(
           id: id,
           name: name,
-          email: email.trim().toLowerCase(),
+          username: username.trim().toLowerCase(),
           passwordHash: Password.hash(password, salt),
           passwordSalt: salt,
           role: role.name,
@@ -630,6 +809,59 @@ class ChurchRepository {
     });
   }
 
+  /// Every service a member was checked in to, most recent first.
+  ///
+  /// This is the question the attendance screen could not previously answer:
+  /// headcounts told you how many came, never whether a particular person did.
+  Stream<List<domain.MemberAttendance>> watchMemberAttendance(String memberId) {
+    final query = db.select(db.checkIns).join([
+      innerJoin(db.attendanceRecords,
+          db.attendanceRecords.id.equalsExp(db.checkIns.attendanceId)),
+    ])
+      ..where(db.checkIns.memberId.equals(memberId) &
+          db.attendanceRecords.deletedAt.isNull())
+      ..orderBy([OrderingTerm(
+          expression: db.attendanceRecords.date, mode: OrderingMode.desc)]);
+
+    return query.watch().map((rows) => rows.map((row) {
+          final record = row.readTable(db.attendanceRecords);
+          return domain.MemberAttendance(
+            memberId: memberId,
+            attendanceId: record.id,
+            date: record.date,
+            serviceName: record.serviceName,
+            branchId: record.branchId,
+          );
+        }).toList());
+  }
+
+  /// How many of the last [services] a member attended, and how many there were.
+  ///
+  /// Reported as a fraction rather than a bare percentage because "2 of 3" is
+  /// honest about a small sample in a way that "67%" is not.
+  Future<({int attended, int total})> attendanceRate(
+    String memberId, {
+    required String branchId,
+    int services = 8,
+  }) async {
+    final recent = await (db.select(db.attendanceRecords)
+          ..where((t) => t.branchId.equals(branchId) & t.deletedAt.isNull())
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          ])
+          ..limit(services))
+        .get();
+
+    if (recent.isEmpty) return (attended: 0, total: 0);
+
+    final ids = recent.map((r) => r.id).toList();
+    final present = await (db.select(db.checkIns)
+          ..where((t) => t.memberId.equals(memberId) & t.attendanceId.isIn(ids)))
+        .get();
+
+    return (attended: present.length, total: recent.length);
+  }
+
   Future<Set<String>> checkedInMembers(String attendanceId) async {
     final rows = await (db.select(db.checkIns)
           ..where((t) => t.attendanceId.equals(attendanceId)))
@@ -755,6 +987,8 @@ class ChurchRepository {
     String id, {
     domain.CareStatus? status,
     domain.CarePriority? priority,
+    domain.CareType? type,
+    String? summary,
     String? assignedToId,
   }) =>
       (db.update(db.careRequests)..where((t) => t.id.equals(id))).write(
@@ -762,6 +996,8 @@ class ChurchRepository {
           status: status == null ? const Value.absent() : Value(status.name),
           priority:
               priority == null ? const Value.absent() : Value(priority.name),
+          type: type == null ? const Value.absent() : Value(type.name),
+          summary: summary == null ? const Value.absent() : Value(summary),
           assignedToId: Value(assignedToId),
           updatedAt: Value(_now),
         ),

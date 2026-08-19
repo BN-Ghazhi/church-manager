@@ -292,4 +292,58 @@ void main() {
     final ok = await repo.watchDepartments().first;
     expect(ok.firstWhere((d) => d.id == deptId).headId, memberId);
   });
+
+  test('a check-in records that a specific member was present', () async {
+    final date = DateTime.utc(2026, 8, 23);
+
+    await repo.saveCheckIns(
+      branchId: branchId,
+      date: date,
+      serviceName: 'First Service',
+      memberIds: {memberId},
+    );
+
+    // The question headcounts could not answer: was this person there?
+    final history = await repo.watchMemberAttendance(memberId).first;
+    expect(history, hasLength(1));
+    expect(history.single.date, date);
+    expect(history.single.serviceName, 'First Service');
+  });
+
+  test('a member absent from a service does not appear in their history',
+      () async {
+    final absentee = await repo.createMember(
+      branchId: branchId, firstName: 'Away', lastName: 'Member',
+      email: '', phone: '', gender: Gender.male,
+      dateOfBirth: DateTime.utc(1988, 1, 1),
+      maritalStatus: MaritalStatus.single, status: MemberStatus.active,
+      joinedAt: DateTime.utc(2024, 1, 1), addressLine: '', city: '',
+      state: '', isBaptized: true,
+    );
+
+    await repo.saveCheckIns(
+      branchId: branchId,
+      date: DateTime.utc(2026, 8, 23),
+      serviceName: 'First Service',
+      memberIds: {memberId},
+    );
+
+    expect(await repo.watchMemberAttendance(absentee).first, isEmpty);
+  });
+
+  test('attendance rate counts services attended out of those held', () async {
+    for (final day in [16, 23, 30]) {
+      await repo.saveCheckIns(
+        branchId: branchId,
+        date: DateTime.utc(2026, 8, day),
+        serviceName: 'First Service',
+        // Present for two of the three.
+        memberIds: day == 30 ? <String>{} : {memberId},
+      );
+    }
+
+    final rate = await repo.attendanceRate(memberId, branchId: branchId);
+    expect(rate.total, 3);
+    expect(rate.attended, 2);
+  });
 }

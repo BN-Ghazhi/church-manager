@@ -18,7 +18,6 @@ import 'screens/branches_screen.dart';
 import 'screens/attendance_screen.dart';
 import 'screens/care_screen.dart';
 import 'screens/communication_screen.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/departments_screen.dart';
 import 'screens/discipleship_screen.dart';
 import 'screens/events_screen.dart';
@@ -26,7 +25,7 @@ import 'screens/finance_screen.dart';
 import 'screens/member_detail_screen.dart';
 import 'screens/members_screen.dart';
 import 'screens/ministries_screen.dart';
-import 'screens/reports_screen.dart';
+import 'screens/overview_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/volunteers_screen.dart';
 import 'shell/app_shell.dart';
@@ -97,11 +96,15 @@ GoRouter _buildRouter(Ref ref) => GoRouter(
       routes: [
         GoRoute(
           path: '/dashboard',
-          pageBuilder: (c, s) => const NoTransitionPage(child: DashboardScreen()),
+          pageBuilder: (c, s) =>
+              const NoTransitionPage(child: OverviewScreen()),
         ),
+        // Reports moved into a tab on the dashboard. The route stays so old
+        // links, bookmarks and the Export button still land in the right place.
         GoRoute(
           path: '/reports',
-          pageBuilder: (c, s) => const NoTransitionPage(child: ReportsScreen()),
+          pageBuilder: (c, s) =>
+              const NoTransitionPage(child: OverviewScreen(initialTab: 1)),
         ),
         GoRoute(
           path: '/branches',

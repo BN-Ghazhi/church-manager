@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../widgets/feedback.dart';
+import '../providers/permissions.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/charts.dart';
 import '../widgets/data_table_view.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
+import '../providers/auth.dart';
 import '../widgets/page_header.dart';
 import '../widgets/record_forms.dart';
 import '../widgets/page_scaffold.dart';
@@ -49,7 +54,8 @@ class FinanceScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'finance.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -216,6 +222,18 @@ class FinanceScreen extends ConsumerWidget {
                                     ?.copyWith(fontWeight: FontWeight.w700),
                               ),
                             ),
+                            TableColumn<Donation>(
+                              id: 'actions',
+                              header: '',
+                              width: 116,
+                              cell: (d) => RowActions(
+                                onView: () => _showDonation(context, ref, d),
+                                onEdit: () =>
+                                    showDonationForm(context, donation: d),
+                                onDelete: () =>
+                                    _deleteDonation(context, ref, d),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -291,6 +309,18 @@ class FinanceScreen extends ConsumerWidget {
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            TableColumn<ExpenseRecord>(
+                              id: 'actions',
+                              header: '',
+                              width: 116,
+                              cell: (e) => RowActions(
+                                onView: () => _showExpense(context, ref, e),
+                                onEdit: () =>
+                                    showExpenseForm(context, expense: e),
+                                onDelete: () =>
+                                    _deleteExpense(context, ref, e),
                               ),
                             ),
                           ],
@@ -373,4 +403,101 @@ class FinanceScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+void _showDonation(BuildContext context, WidgetRef ref, Donation donation) {
+  showDetailSheet<void>(
+    context,
+    title: Fmt.currency(donation.amount),
+    subtitle: '${donation.fund.label} · ${Fmt.date(donation.date)}',
+    children: [
+      DetailRows(entries: {
+        'Donor': donation.donorName,
+        'Member': donation.memberId == null
+            ? 'Anonymous or unmatched'
+            : ref.read(memberNameProvider(donation.memberId)),
+        'Fund': donation.fund.label,
+        'Method': donation.method.label,
+        'Date received': Fmt.date(donation.date),
+        'Reference': donation.reference,
+        'Recurring': donation.isRecurring ? 'Yes' : 'No',
+        'Branch': ref.read(branchNameProvider(donation.branchId)),
+      }),
+    ],
+    actions: [
+      if (ref.read(canEditProvider('Finance')))
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showDonationForm(context, donation: donation);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit'),
+        ),
+    ],
+  );
+}
+
+Future<void> _deleteDonation(
+  BuildContext context,
+  WidgetRef ref,
+  Donation donation,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: '${Fmt.currency(donation.amount)} from ${donation.donorName}',
+    consequence: 'Giving totals and fund reports will change to match.',
+  );
+  if (!ok || !context.mounted) return;
+  await ref.read(repositoryProvider).deleteDonation(donation.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, 'Gift removed from the ledger.');
+}
+
+void _showExpense(BuildContext context, WidgetRef ref, ExpenseRecord expense) {
+  showDetailSheet<void>(
+    context,
+    title: Fmt.currency(expense.amount),
+    subtitle: '${expense.vendor} · ${expense.category}',
+    children: [
+      DetailRows(entries: {
+        'Vendor': expense.vendor,
+        'Category': expense.category,
+        'Amount': Fmt.currency(expense.amount),
+        'Date': Fmt.date(expense.date),
+        'Status': expense.status.label,
+        'Approved by': expense.approvedBy.isEmpty
+            ? 'Not approved'
+            : ref.read(memberNameProvider(expense.approvedBy)),
+        'Branch': ref.read(branchNameProvider(expense.branchId)),
+      }),
+    ],
+    actions: [
+      if (ref.read(canEditProvider('Finance')))
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showExpenseForm(context, expense: expense);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit'),
+        ),
+    ],
+  );
+}
+
+Future<void> _deleteExpense(
+  BuildContext context,
+  WidgetRef ref,
+  ExpenseRecord expense,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: '${Fmt.currency(expense.amount)} to ${expense.vendor}',
+    consequence: 'Expense totals and the net position will change to match.',
+  );
+  if (!ok || !context.mounted) return;
+  await ref.read(repositoryProvider).deleteExpense(expense.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, 'Expense removed from the ledger.');
 }

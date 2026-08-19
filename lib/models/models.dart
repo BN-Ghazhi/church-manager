@@ -351,6 +351,24 @@ class AttendanceRecord {
   int get total => inPerson + online;
 }
 
+/// One service a member was present at.
+@immutable
+class MemberAttendance {
+  const MemberAttendance({
+    required this.memberId,
+    required this.attendanceId,
+    required this.date,
+    required this.serviceName,
+    required this.branchId,
+  });
+
+  final String memberId;
+  final String attendanceId;
+  final DateTime date;
+  final String serviceName;
+  final String branchId;
+}
+
 /* ------------------------------------------------------------------ giving */
 
 enum GivingFund {
@@ -731,7 +749,7 @@ class StaffUser {
   const StaffUser({
     required this.id,
     required this.name,
-    required this.email,
+    required this.username,
     required this.role,
     required this.lastActiveAt,
     required this.status,
@@ -742,7 +760,9 @@ class StaffUser {
 
   final String id;
   final String name;
-  final String email;
+  /// The sign-in name. See the note on `UserAccounts.username` — a church
+  /// office cannot assume everyone has an email address.
+  final String username;
   final UserRole role;
   final DateTime lastActiveAt;
   final AccountStatus status;

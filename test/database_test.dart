@@ -64,7 +64,7 @@ void main() {
 
     test('the first administrator can sign in', () async {
       final signedIn = await repo.signIn(
-        Seeder.firstAdminEmail,
+        Seeder.firstAdminUsername,
         Seeder.firstAdminPassword,
       );
       expect(signedIn, isNotNull);
@@ -204,7 +204,7 @@ void main() {
   group('authentication', () {
     test('a correct password signs in', () async {
       final user = await repo.signIn(
-        Seeder.firstAdminEmail,
+        Seeder.firstAdminUsername,
         Seeder.firstAdminPassword,
       );
       expect(user, isNotNull);
@@ -213,7 +213,7 @@ void main() {
 
     test('a wrong password is rejected', () async {
       final user =
-          await repo.signIn(Seeder.firstAdminEmail, 'not-the-password');
+          await repo.signIn(Seeder.firstAdminUsername, 'not-the-password');
       expect(user, isNull);
     });
 
@@ -224,7 +224,7 @@ void main() {
 
     test('email is case-insensitive', () async {
       final user = await repo.signIn(
-        Seeder.firstAdminEmail.toUpperCase(),
+        Seeder.firstAdminUsername.toUpperCase(),
         Seeder.firstAdminPassword,
       );
       expect(user, isNotNull);
@@ -235,7 +235,7 @@ void main() {
       final target = users.first;
       await repo.updateUserRole(target.id, status: AccountStatus.suspended);
 
-      final user = await repo.signIn(target.email, Seeder.firstAdminPassword);
+      final user = await repo.signIn(target.username, Seeder.firstAdminPassword);
       expect(user, isNull);
     });
 
@@ -248,11 +248,11 @@ void main() {
         role: UserRole.departmentHead,
         branchId: branch,
         departmentId: dept,
-        email: 'head@example.com',
+        username: 'depthead',
         password: 'headpass1',
       );
 
-      final signedIn = await repo.signIn('head@example.com', 'headpass1');
+      final signedIn = await repo.signIn('depthead', 'headpass1');
       expect(signedIn, isNotNull);
       expect(signedIn!.departmentId, dept);
       expect(signedIn.branchId, branch);
@@ -265,22 +265,22 @@ void main() {
 
       await repo.changePassword(target.id, 'brand-new-pass9');
 
-      expect(await repo.signIn(target.email, Seeder.firstAdminPassword), isNull);
-      expect(await repo.signIn(target.email, 'brand-new-pass9'), isNotNull);
+      expect(await repo.signIn(target.username, Seeder.firstAdminPassword), isNull);
+      expect(await repo.signIn(target.username, 'brand-new-pass9'), isNotNull);
     });
 
     test('a new user account can sign in immediately', () async {
       final branches = await repo.watchBranches().first;
       await repo.createUser(
         name: 'New Leader',
-        email: 'newleader@gracechapel.org',
+        username: 'newleader',
         password: 'strongpass1',
         role: UserRole.branchAdmin,
         branchId: branches.first.id,
       );
 
       final user =
-          await repo.signIn('newleader@gracechapel.org', 'strongpass1');
+          await repo.signIn('newleader', 'strongpass1');
       expect(user, isNotNull);
       expect(user!.role, UserRole.branchAdmin);
       // Invited accounts become active on first sign-in.

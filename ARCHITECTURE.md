@@ -24,7 +24,7 @@ dark themed, passing `flutter analyze` with zero issues and 21 tests.
 /departments    Youth, Children and every other department, per branch
 /members        Directory with search, filter, sort, pagination
 /members/:id    Full member profile: giving, serving, care, notes
-/attendance     Service records, trends, member check-in
+/attendance     Service records, trends, member check-in, who attended each service
 /ministries     Departments and small groups with leaders and capacity
 /events         Calendar, registrations, weekly schedule, announcements
 /volunteers     Serving rotas by Sunday, coverage by role
@@ -34,7 +34,6 @@ dark themed, passing `flutter analyze` with zero issues and 21 tests.
 /discipleship   Courses, enrolment and the growth pathway
 /assets         Equipment register with condition and value
 /access         Users, roles, and the module permission matrix
-/reports        Report templates, scheduled reports, data previews
 /settings       Church profile, services, appearance, preferences, integrations
 ```
 
@@ -132,34 +131,36 @@ The whole design rests on one rule: **screens never know where data comes
 from.**
 
 ```
-  lib/models/models.dart      ← the domain contract (Member, Donation, …)
+  lib/models/models.dart        ← the domain contract (Member, Donation, …)
            ↑
-  lib/data/*.dart             ← mock data, typed against the contract
+  lib/db/tables.dart            ← Drift schema
+  lib/db/repository.dart        ← every read and write, and the rules they obey
            ↑
   lib/providers/repository.dart ← Riverpod providers: THE SEAM
            ↑
-  lib/screens/*.dart          ← screens read providers, never data files
+  lib/screens/*.dart            ← screens read providers, never the database
 ```
 
-When the backend arrives, only `repository.dart` changes. A provider like
+No screen imports `lib/db`. They call `ref.watch(membersProvider)`, and the
+provider layer decides where that list comes from. Today it is SQLite on the
+local disk; when a server arrives, only `lib/providers/repository.dart` changes:
 
 ```dart
-final membersProvider = Provider<List<Member>>((ref) => mem.members);
-```
-
-becomes
-
-```dart
-final membersProvider = FutureProvider<List<Member>>((ref) =>
+final membersProvider = Provider<List<Member>>(...);          // local database
+final membersProvider = FutureProvider<List<Member>>((ref) => // server
     ref.watch(apiProvider).fetchMembers());
 ```
 
-and the screens follow, because `ref.watch(membersProvider)` is already how they
-ask for data. This is the single most valuable structural property of the
-codebase — preserve it.
+The screens do not move, because asking a provider is already how they get data.
+This is the single most valuable structural property of the codebase — preserve
+it.
 
-Two screens (`command_palette.dart`, `member_form.dart`) import `lib/data`
-directly for convenience. Route those through providers when the API lands.
+**Rules live in the repository, not the forms.** Cross-branch integrity (a
+department head must belong to that branch; a children's department cannot
+enrol adults; headquarters cannot be deleted) is enforced in
+`lib/db/repository.dart`, so it holds for any caller — a future import script or
+API endpoint included — rather than only for the dialog that happens to be
+wired up today.
 
 ### 2.2 State management: Riverpod
 
@@ -196,6 +197,11 @@ This is where repetition is prevented. A small shared library carries the entire
 | `Sparkline` | StatCard | Custom-painted inline trend line |
 | `EventTile` | 2 screens | Event row with date chip |
 | charts.dart | 8 screens | Trend, bar and donut charts over fl_chart |
+| `RowActions` | every table | View / edit / delete buttons on a table row |
+| `StatRow` | every screen | The KPI row, collapsible and remembered |
+| `showDetailSheet` | every table | The "click a row for details" modal |
+| `DetailRows` | every modal | Label/value list that skips blank values |
+| `FormDialog` + fields | every form | One validated dialog, create and edit alike |
 
 Three deserve explanation.
 
@@ -236,23 +242,94 @@ desktop app and in a browser:
 | 700–1100 | Icon rail with tooltips |
 | < 700 | Hamburger + drawer |
 
-### 2.6 Deterministic mock data
+### 2.6 Tables, modals and edits
 
-Mock data uses a seeded generator (`lib/data/seed.dart`), never `Random()`. The
-dataset is byte-identical on every run and platform, which keeps screenshots,
-tests and demos stable. Dates are anchored to a fixed `kDemoNow`
-(14 August 2026) so relative times ("2 days ago") stay sensible.
+Every list in the app is a `DataTableView<T>`, and every table row carries the
+same three actions in the same place: **view**, **edit**, **delete**. That
+uniformity is the point — a user who learns the members table has learned all
+eight of them.
 
-The dataset is deliberately realistic in size — 96 members, 140 donations,
-26 weeks of attendance — so pagination, filtering and chart density are properly
-exercised rather than looking good with five rows.
+- **View** opens `showDetailSheet`, a modal built from `DetailRows`. It skips
+  blank values rather than printing empty labels, so a sparsely-filled record
+  looks deliberate instead of broken.
+- **Edit** reuses the *same* form widget that created the record. Each
+  `show…Form` takes an optional existing record; when present, the fields are
+  pre-filled, the title and button change, and submit calls `update…` instead of
+  `create…`. There is no second edit screen to drift out of step.
+- **Delete** goes through `confirmDelete`, which states the consequence in
+  plain words ("attendance trends will be recalculated without it") rather than
+  asking "Are you sure?". Deletes are **soft** everywhere: the row keeps its
+  `deletedAt` stamp and drops out of every query, so nothing is ever
+  unrecoverably lost.
 
-Dashboard demographics (age bands, gender split, growth funnel) are **derived
-from the member list**, not hard-coded, so charts always agree with the
-directory. The funnel stages are strict nested subsets, so it narrows
-monotonically and the conversion percentages are honest.
+Two invariants are enforced in the repository rather than the UI, so they hold
+no matter who calls: **headquarters cannot be deleted** (every record needs a
+branch to belong to), and an update writes only the columns it was passed —
+`Value.absent()` for the rest — so a partial edit cannot blank out fields it
+never showed the user.
 
-### 2.7 Notable decisions and their reasons
+### 2.7 Was this member present?
+
+A headcount answers *how many*; the question a pastor actually asks is *whether
+a particular person has been in church lately*. Two reads answer it, and the UI
+surfaces both:
+
+| Read | Answers | Shown in |
+|---|---|---|
+| `watchServiceAttendees(serviceId)` | who was at this service | Attendance → service modal |
+| `watchMemberAttendance(memberId)` | which services this member attended | member detail modal |
+| `attendanceRate(memberId, branchId:)` | how many of the last N services | member detail modal |
+
+A service can exist with a headcount and no names against it — that is a normal
+state, not an error, and both screens say so explicitly rather than showing an
+empty list that reads like a bug.
+
+### 2.8 Who can see what
+
+Access has two dimensions that always apply together:
+
+- **Capability** — *what* you may do. `permissionMatrix` maps module × role to
+  view/edit/delete, and `canViewProvider` / `canEditProvider` are what screens
+  and nav items consult.
+- **Scope** — *whose data* you see. `RoleScope` is all branches, your branch,
+  your department, or just yourself.
+
+Cross-branch sight is a **permission granted per account**
+(`StaffUser.canSeeAllBranches`), not a fixed property of a role. A Super Admin
+can grant it to any branch-level account from Roles & Access and revoke it
+again; department heads and volunteers can never receive it. This is why the
+church's own structure can change without editing the role enum.
+
+Every branch-scoped query funnels through one gate, `activeBranchIdsProvider`.
+A screen cannot accidentally read another branch's data, because it never picks
+the branch filter itself. Note that client-side scoping is a convenience, not a
+security boundary — when a server arrives, the same filter must be enforced
+server-side (§4, item 5).
+
+### 2.9 Persistence
+
+One SQLite file, via Drift, in the platform's application-support directory. No
+server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
+code is committed, so `build_runner` needs
+`--delete-conflicting-outputs` when regenerating.
+
+**Schema version 2.** The version is in `lib/db/database.dart`, and every bump
+needs an `onUpgrade` branch — an install that already holds real records must be
+migrated, never re-created. v1 → v2 renamed `user_accounts.email` to `username`
+and turned each address into its local part (`grace@kgc.org` → `grace`), keeping
+the same password. `test/migration_test.dart` builds a v1 database by hand and
+signs in through the upgrade, because a broken migration does not lose a feature
+— it locks someone out of their own church's records.
+
+Deletes are soft everywhere (`deletedAt`), and every read filters on it. Writes
+stamp `updatedAt`, and list ordering breaks ties on `createdAt` so a
+just-added record sorts first (§5, "List ordering").
+
+Each install has its **own** database — a branch laptop is not visible to
+headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
+three options and what each costs.
+
+### 2.10 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through
@@ -430,15 +507,18 @@ lib/
 │   ├── app_config.dart     Church profile, services, current user
 │   └── navigation.dart     Single source of the IA
 ├── models/models.dart      The domain contract
-├── data/                   Mock data — the swap point for the API
-│   ├── seed.dart           Deterministic generator + kDemoNow
-│   ├── members_data.dart
-│   ├── ministries_data.dart
-│   ├── events_data.dart
-│   ├── finance_data.dart
-│   ├── operations_data.dart
-│   └── dashboard_data.dart Derived aggregates
-├── providers/repository.dart  Riverpod providers: THE SEAM
+├── db/
+│   ├── tables.dart         Drift schema (+ generated database.g.dart)
+│   ├── repository.dart     Every read and write, and the rules they obey
+│   └── seeder.dart         First-run state: one branch, one admin, catalogue
+├── aggregates/             Pure functions over whatever the database returns
+│   ├── dashboard.dart      KPIs, demographics, growth funnel
+│   ├── attendance.dart     Attendance trends
+│   └── finance.dart        Giving and expense totals by fund
+├── providers/
+│   ├── repository.dart     Riverpod providers: THE SEAM
+│   ├── auth.dart           Sign-in and the current user
+│   └── permissions.dart    Capability × scope, and the branch gate
 ├── screens/                One file per screen
 ├── shell/
 │   ├── app_shell.dart      Responsive sidebar/rail/drawer + top bar
@@ -471,11 +551,15 @@ push it above this week's.
 
 ### Conventions worth keeping
 
-- Screens read providers, never `lib/data` directly
+- Screens read providers, never `lib/db` directly
 - All formatting goes through `Fmt` — no inline `DateFormat` or string interpolation of numbers
 - New statuses get registered in `StatusBadge.toneOf()`, not styled ad hoc
 - New screens get added to `navigation.dart` and the router
 - Stub actions call `showStubMessage()` so they stay honest
+- Every table row gets `RowActions`; every KPI row is a `StatRow`
+- Edit reuses the create form (`show…Form(context, record: existing)`), never a
+  second screen
+- Deletes are soft and go through `confirmDelete` with a stated consequence
 - Comments explain *why*, not *what*
 
 ---
@@ -519,14 +603,13 @@ Windows machine (or via CI) — Flutter cannot cross-compile desktop targets.
 ### Things I decided that you may want to overrule
 
 - **Ghanaian context** — Ghana cedi (GH₵), Accra headquarters with branches in
-  Tema, Kumasi, Takoradi, Tamale and Cape Coast, Ghanaian names (Akan, Ewe, Ga
-  and northern), `+233` mobile numbers, and Paystack (which operates in Ghana).
+  Ghana's sixteen regions (not "states"), `+233` mobile numbers, and Paystack (which operates in Ghana).
   Change `ChurchConfig` in `lib/config/app_config.dart`, `Fmt` in
-  `lib/utils/formatters.dart`, and the seed lists in `lib/data/`.
+  `lib/utils/formatters.dart`, and the reference data in `lib/config/ghana.dart`.
 - **Neutral near-monochrome theme** — deliberately unbranded. Church colours go
   in `AppTheme.seed` and the accent constants.
 - **Ten roles across four scopes** — see §2.8. Your actual structure may differ;
-  both the role list (`models.dart`) and the matrix (`operations_data.dart`) are
+  both the role list (`models.dart`) and the matrix (`lib/config/permissions.dart`) are
   straightforward to edit.
 - **Departments vs. Ministries** — `/departments` is the new per-branch model;
   `/ministries` is the older HQ-level view, kept so nothing was lost. Retire the

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../widgets/collapsible.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -38,7 +39,8 @@ class DiscipleshipScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'discipleship.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [

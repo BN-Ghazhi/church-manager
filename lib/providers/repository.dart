@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 // `Family` (a household) is the one in scope here.
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../data/dashboard_data.dart' as dash;
-import '../data/events_data.dart' as ev;
-import '../data/finance_data.dart' as fin;
-import '../data/operations_data.dart' as ops;
+import '../aggregates/dashboard.dart' as dash;
+import '../aggregates/attendance.dart' as ev;
+import '../aggregates/finance.dart' as fin;
+import '../config/permissions.dart' as ops;
 import '../models/models.dart';
 import 'auth.dart';
 import 'permissions.dart';
@@ -253,6 +253,28 @@ final attendanceTrendProvider = Provider<List<TrendPoint>>(
 
 final announcementsProvider = Provider<List<AnnouncementItem>>(
   (ref) => _scoped(ref, _value(ref, announcementsStreamProvider), (a) => a.branchId),
+);
+
+/// Every service one member was present at.
+final memberAttendanceProvider =
+    StreamProvider.family<List<MemberAttendance>, String>(
+  (ref, memberId) =>
+      ref.watch(repositoryProvider).watchMemberAttendance(memberId),
+);
+
+/// Everyone individually checked in at one service.
+final serviceAttendeesProvider =
+    StreamProvider.family<List<Member>, String>(
+  (ref, attendanceId) =>
+      ref.watch(repositoryProvider).watchServiceAttendees(attendanceId),
+);
+
+/// A member's attendance across the last few services at their branch.
+final memberAttendanceRateProvider =
+    FutureProvider.family<({int attended, int total}), Member>(
+  (ref, member) => ref
+      .watch(repositoryProvider)
+      .attendanceRate(member.id, branchId: member.branchId),
 );
 
 /* ------------------------------------------------------------------ money */

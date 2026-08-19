@@ -1,4 +1,4 @@
-import 'package:churchms/data/operations_data.dart' show permissionMatrix;
+import 'package:churchms/config/permissions.dart' show permissionMatrix;
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';

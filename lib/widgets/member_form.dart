@@ -192,7 +192,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                       ),
                     ),
                     _field(
-                      'Email',
+                      'Email (optional)',
                       TextFormField(
                         controller: _email,
                         decoration:
@@ -200,7 +200,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                       ),
                     ),
                     _field(
-                      'Phone',
+                      'Phone (optional)',
                       TextFormField(
                         controller: _phone,
                         decoration: const InputDecoration(

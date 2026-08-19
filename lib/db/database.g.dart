@@ -3807,10 +3807,12 @@ class $UserAccountsTable extends UserAccounts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
   @override
-  late final GeneratedColumn<String> email = GeneratedColumn<String>(
-    'email',
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -3945,7 +3947,7 @@ class $UserAccountsTable extends UserAccounts
     deletedAt,
     id,
     name,
-    email,
+    username,
     passwordHash,
     passwordSalt,
     role,
@@ -4000,13 +4002,13 @@ class $UserAccountsTable extends UserAccounts
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('email')) {
+    if (data.containsKey('username')) {
       context.handle(
-        _emailMeta,
-        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
       );
     } else if (isInserting) {
-      context.missing(_emailMeta);
+      context.missing(_usernameMeta);
     }
     if (data.containsKey('password_hash')) {
       context.handle(
@@ -4123,9 +4125,9 @@ class $UserAccountsTable extends UserAccounts
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      email: attachedDatabase.typeMapping.read(
+      username: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}email'],
+        data['${effectivePrefix}username'],
       )!,
       passwordHash: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -4185,8 +4187,14 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
   final String id;
   final String name;
 
-  /// Lower-cased at write time; the unique index makes it the login key.
-  final String email;
+  /// The sign-in name. Lower-cased at write time, and unique.
+  ///
+  /// A username rather than an email address: a church office is not a place
+  /// where everyone has a work email, and asking for one to log in excludes the
+  /// people most likely to be using this. The consequence is that there is no
+  /// address to send a password reset to, so a Super Admin resets passwords
+  /// from Roles & Access instead.
+  final String username;
 
   /// PBKDF2-derived, never the plain password. See `lib/db/password.dart`.
   final String passwordHash;
@@ -4219,7 +4227,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
     this.deletedAt,
     required this.id,
     required this.name,
-    required this.email,
+    required this.username,
     required this.passwordHash,
     required this.passwordSalt,
     required this.role,
@@ -4241,7 +4249,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
     }
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
-    map['email'] = Variable<String>(email);
+    map['username'] = Variable<String>(username);
     map['password_hash'] = Variable<String>(passwordHash);
     map['password_salt'] = Variable<String>(passwordSalt);
     map['role'] = Variable<String>(role);
@@ -4274,7 +4282,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
           : Value(deletedAt),
       id: Value(id),
       name: Value(name),
-      email: Value(email),
+      username: Value(username),
       passwordHash: Value(passwordHash),
       passwordSalt: Value(passwordSalt),
       role: Value(role),
@@ -4309,7 +4317,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      email: serializer.fromJson<String>(json['email']),
+      username: serializer.fromJson<String>(json['username']),
       passwordHash: serializer.fromJson<String>(json['passwordHash']),
       passwordSalt: serializer.fromJson<String>(json['passwordSalt']),
       role: serializer.fromJson<String>(json['role']),
@@ -4331,7 +4339,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
-      'email': serializer.toJson<String>(email),
+      'username': serializer.toJson<String>(username),
       'passwordHash': serializer.toJson<String>(passwordHash),
       'passwordSalt': serializer.toJson<String>(passwordSalt),
       'role': serializer.toJson<String>(role),
@@ -4351,7 +4359,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
     Value<DateTime?> deletedAt = const Value.absent(),
     String? id,
     String? name,
-    String? email,
+    String? username,
     String? passwordHash,
     String? passwordSalt,
     String? role,
@@ -4368,7 +4376,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     id: id ?? this.id,
     name: name ?? this.name,
-    email: email ?? this.email,
+    username: username ?? this.username,
     passwordHash: passwordHash ?? this.passwordHash,
     passwordSalt: passwordSalt ?? this.passwordSalt,
     role: role ?? this.role,
@@ -4389,7 +4397,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      email: data.email.present ? data.email.value : this.email,
+      username: data.username.present ? data.username.value : this.username,
       passwordHash: data.passwordHash.present
           ? data.passwordHash.value
           : this.passwordHash,
@@ -4423,7 +4431,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
           ..write('deletedAt: $deletedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('email: $email, ')
+          ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
           ..write('passwordSalt: $passwordSalt, ')
           ..write('role: $role, ')
@@ -4445,7 +4453,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
     deletedAt,
     id,
     name,
-    email,
+    username,
     passwordHash,
     passwordSalt,
     role,
@@ -4466,7 +4474,7 @@ class UserAccountRow extends DataClass implements Insertable<UserAccountRow> {
           other.deletedAt == this.deletedAt &&
           other.id == this.id &&
           other.name == this.name &&
-          other.email == this.email &&
+          other.username == this.username &&
           other.passwordHash == this.passwordHash &&
           other.passwordSalt == this.passwordSalt &&
           other.role == this.role &&
@@ -4485,7 +4493,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
   final Value<DateTime?> deletedAt;
   final Value<String> id;
   final Value<String> name;
-  final Value<String> email;
+  final Value<String> username;
   final Value<String> passwordHash;
   final Value<String> passwordSalt;
   final Value<String> role;
@@ -4503,7 +4511,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
     this.deletedAt = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
-    this.email = const Value.absent(),
+    this.username = const Value.absent(),
     this.passwordHash = const Value.absent(),
     this.passwordSalt = const Value.absent(),
     this.role = const Value.absent(),
@@ -4522,7 +4530,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
     this.deletedAt = const Value.absent(),
     required String id,
     required String name,
-    required String email,
+    required String username,
     required String passwordHash,
     required String passwordSalt,
     required String role,
@@ -4536,7 +4544,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
-       email = Value(email),
+       username = Value(username),
        passwordHash = Value(passwordHash),
        passwordSalt = Value(passwordSalt),
        role = Value(role),
@@ -4547,7 +4555,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
     Expression<DateTime>? deletedAt,
     Expression<String>? id,
     Expression<String>? name,
-    Expression<String>? email,
+    Expression<String>? username,
     Expression<String>? passwordHash,
     Expression<String>? passwordSalt,
     Expression<String>? role,
@@ -4566,7 +4574,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
-      if (email != null) 'email': email,
+      if (username != null) 'username': username,
       if (passwordHash != null) 'password_hash': passwordHash,
       if (passwordSalt != null) 'password_salt': passwordSalt,
       if (role != null) 'role': role,
@@ -4588,7 +4596,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
     Value<DateTime?>? deletedAt,
     Value<String>? id,
     Value<String>? name,
-    Value<String>? email,
+    Value<String>? username,
     Value<String>? passwordHash,
     Value<String>? passwordSalt,
     Value<String>? role,
@@ -4607,7 +4615,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
       deletedAt: deletedAt ?? this.deletedAt,
       id: id ?? this.id,
       name: name ?? this.name,
-      email: email ?? this.email,
+      username: username ?? this.username,
       passwordHash: passwordHash ?? this.passwordHash,
       passwordSalt: passwordSalt ?? this.passwordSalt,
       role: role ?? this.role,
@@ -4640,8 +4648,8 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (email.present) {
-      map['email'] = Variable<String>(email.value);
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
     }
     if (passwordHash.present) {
       map['password_hash'] = Variable<String>(passwordHash.value);
@@ -4687,7 +4695,7 @@ class UserAccountsCompanion extends UpdateCompanion<UserAccountRow> {
           ..write('deletedAt: $deletedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('email: $email, ')
+          ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
           ..write('passwordSalt: $passwordSalt, ')
           ..write('role: $role, ')
@@ -18573,7 +18581,7 @@ typedef $$UserAccountsTableCreateCompanionBuilder =
       Value<DateTime?> deletedAt,
       required String id,
       required String name,
-      required String email,
+      required String username,
       required String passwordHash,
       required String passwordSalt,
       required String role,
@@ -18593,7 +18601,7 @@ typedef $$UserAccountsTableUpdateCompanionBuilder =
       Value<DateTime?> deletedAt,
       Value<String> id,
       Value<String> name,
-      Value<String> email,
+      Value<String> username,
       Value<String> passwordHash,
       Value<String> passwordSalt,
       Value<String> role,
@@ -18698,8 +18706,8 @@ class $$UserAccountsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get email => $composableBuilder(
-    column: $table.email,
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18842,8 +18850,8 @@ class $$UserAccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get email => $composableBuilder(
-    column: $table.email,
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -18976,8 +18984,8 @@ class $$UserAccountsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get email =>
-      $composableBuilder(column: $table.email, builder: (column) => column);
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
 
   GeneratedColumn<String> get passwordHash => $composableBuilder(
     column: $table.passwordHash,
@@ -19117,7 +19125,7 @@ class $$UserAccountsTableTableManager
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String> email = const Value.absent(),
+                Value<String> username = const Value.absent(),
                 Value<String> passwordHash = const Value.absent(),
                 Value<String> passwordSalt = const Value.absent(),
                 Value<String> role = const Value.absent(),
@@ -19135,7 +19143,7 @@ class $$UserAccountsTableTableManager
                 deletedAt: deletedAt,
                 id: id,
                 name: name,
-                email: email,
+                username: username,
                 passwordHash: passwordHash,
                 passwordSalt: passwordSalt,
                 role: role,
@@ -19155,7 +19163,7 @@ class $$UserAccountsTableTableManager
                 Value<DateTime?> deletedAt = const Value.absent(),
                 required String id,
                 required String name,
-                required String email,
+                required String username,
                 required String passwordHash,
                 required String passwordSalt,
                 required String role,
@@ -19173,7 +19181,7 @@ class $$UserAccountsTableTableManager
                 deletedAt: deletedAt,
                 id: id,
                 name: name,
-                email: email,
+                username: username,
                 passwordHash: passwordHash,
                 passwordSalt: passwordSalt,
                 role: role,

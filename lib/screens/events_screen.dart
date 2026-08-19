@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../providers/auth.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
+import '../widgets/feedback.dart';
+import '../providers/permissions.dart';
 import '../config/app_config.dart';
 import '../utils/clock.dart';
 import '../models/models.dart';
@@ -42,7 +47,8 @@ class EventsScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'events.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -214,6 +220,16 @@ class EventsScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
+              TableColumn<ChurchEvent>(
+                id: 'actions',
+                header: '',
+                width: 116,
+                cell: (e) => RowActions(
+                  onView: () => _showEvent(context, ref, e),
+                  onEdit: () => showEventForm(context, event: e),
+                  onDelete: () => _deleteEvent(context, ref, e),
+                ),
+              ),
             ],
           ),
         ),
@@ -302,4 +318,55 @@ class EventsScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+void _showEvent(BuildContext context, WidgetRef ref, ChurchEvent event) {
+  showDetailSheet<void>(
+    context,
+    title: event.title,
+    subtitle: '${event.category.label} · ${Fmt.dateTime(event.startsAt)}',
+    children: [
+      DetailRows(entries: {
+        'Category': event.category.label,
+        'Starts': Fmt.dateTime(event.startsAt),
+        'Ends': Fmt.dateTime(event.endsAt),
+        'Location': event.location,
+        'Organiser': event.organizerId.isEmpty
+            ? 'Not assigned'
+            : ref.read(memberNameProvider(event.organizerId)),
+        'Expected': Fmt.number(event.expectedAttendance),
+        'Registered': Fmt.number(event.registeredCount),
+        'Repeats weekly': event.isRecurring ? 'Yes' : 'No',
+        'Branch': ref.read(branchNameProvider(event.branchId)),
+        'Description': event.description,
+      }),
+    ],
+    actions: [
+      if (ref.read(canEditProvider('Events')))
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showEventForm(context, event: event);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit'),
+        ),
+    ],
+  );
+}
+
+Future<void> _deleteEvent(
+  BuildContext context,
+  WidgetRef ref,
+  ChurchEvent event,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: event.title,
+    consequence: 'It disappears from the calendar, along with its registrations.',
+  );
+  if (!ok || !context.mounted) return;
+  await ref.read(repositoryProvider).deleteEvent(event.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, '${event.title} removed from the calendar.');
 }

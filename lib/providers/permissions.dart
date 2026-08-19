@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../data/operations_data.dart' show permissionMatrix;
+import '../config/permissions.dart' show permissionMatrix;
 import '../models/models.dart';
 import 'auth.dart';
 import 'repository.dart';
@@ -30,7 +30,7 @@ final currentUserProvider = Provider<StaffUser>((ref) {
       StaffUser(
         id: 'anonymous',
         name: 'Signed out',
-        email: '',
+        username: '',
         role: UserRole.member,
         lastActiveAt: DateTime.now().toUtc(),
         status: AccountStatus.suspended,

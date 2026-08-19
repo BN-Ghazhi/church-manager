@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
 import '../models/models.dart';
+import '../providers/auth.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
 import '../shell/branch_switcher.dart' show accentColor;
@@ -9,10 +10,12 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/charts.dart';
 import '../widgets/feedback.dart';
+import '../widgets/data_table_view.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
 import '../widgets/page_header.dart';
 import '../widgets/record_forms.dart';
 import '../widgets/page_scaffold.dart';
-import '../widgets/person_tile.dart';
 import '../widgets/section_card.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/status_badge.dart';
@@ -55,7 +58,8 @@ class BranchesScreen extends ConsumerWidget {
           ],
         ),
 
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'branches.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -107,13 +111,142 @@ class BranchesScreen extends ConsumerWidget {
             ),
           ),
 
-        ResponsiveGrid(
-          minItemWidth: 380,
-          maxColumns: 2,
-          children: [
-            for (final branch in branches)
-              _BranchCard(branch: branch),
-          ],
+        SectionCard(
+          title: 'Branches',
+          description:
+              'Select a branch to see its leadership and figures.',
+          child: DataTableView<Branch>(
+            rows: branches,
+            rowId: (b) => b.id,
+            pageSize: 12,
+            searchHint: 'Search by name, code or city…',
+            searchable: (b) => '${b.name} ${b.code} ${b.address.city}'
+                ' ${b.address.region}',
+            onRowTap: (b) => _showBranch(context, ref, b),
+            columns: [
+              TableColumn<Branch>(
+                id: 'code',
+                header: 'Code',
+                width: 76,
+                sortValue: (b) => b.code,
+                cell: (b) => Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: accentColor(b.accent).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Text(
+                    b.code,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: accentColor(b.accent),
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+              ),
+              TableColumn<Branch>(
+                id: 'name',
+                header: 'Branch',
+                flex: 3,
+                sortValue: (b) => b.name,
+                cell: (b) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            b.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        if (b.isHeadquarters)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text(
+                              'HQ',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppTheme.warning),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (b.address.short.isNotEmpty)
+                      Text(b.address.short,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall),
+                  ],
+                ),
+              ),
+              TableColumn<Branch>(
+                id: 'pastor',
+                header: 'Branch pastor',
+                flex: 2,
+                hideOnNarrow: true,
+                cell: (b) => Text(
+                  b.pastorId.isEmpty
+                      ? 'Not assigned'
+                      : ref.watch(memberNameProvider(b.pastorId)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontStyle: (b.pastorId.isEmpty)
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
+                ),
+              ),
+              TableColumn<Branch>(
+                id: 'members',
+                header: 'Members',
+                width: 92,
+                sortValue: (b) =>
+                    members.where((m) => m.branchId == b.id).length,
+                cell: (b) => Text(
+                  Fmt.number(members.where((m) => m.branchId == b.id).length),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              TableColumn<Branch>(
+                id: 'status',
+                header: 'Status',
+                width: 128,
+                sortValue: (b) => b.status.label,
+                cell: (b) => StatusBadge(
+                  label: b.status.label,
+                  tone: switch (b.status) {
+                    BranchStatus.active => StatusTone.success,
+                    BranchStatus.planting => StatusTone.info,
+                    BranchStatus.dormant => StatusTone.neutral,
+                  },
+                ),
+              ),
+              TableColumn<Branch>(
+                id: 'actions',
+                header: '',
+                width: 116,
+                cell: (b) => RowActions(
+                  onView: () => _showBranch(context, ref, b),
+                  onEdit: canEdit
+                      ? () => showBranchLeadershipForm(context, branch: b)
+                      : null,
+                  onDelete: canEdit && !b.isHeadquarters
+                      ? () => _deleteBranch(context, ref, b)
+                      : null,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -127,168 +260,89 @@ class BranchesScreen extends ConsumerWidget {
         .where((r) => r.date == latest)
         .fold(0, (sum, r) => sum + r.total);
   }
+}void _showBranch(BuildContext context, WidgetRef ref, Branch branch) {
+  final members =
+      ref.read(membersProvider).where((m) => m.branchId == branch.id).toList();
+  final departments = ref
+      .read(departmentsProvider)
+      .where((d) => d.branchId == branch.id)
+      .toList();
+  final attendance = ref
+      .read(attendanceRecordsProvider)
+      .where((r) => r.branchId == branch.id)
+      .toList();
+  final giving = ref
+      .read(donationsProvider)
+      .where((d) => d.branchId == branch.id)
+      .fold(0.0, (sum, d) => sum + d.amount);
+  final canEdit = ref.read(canEditProvider('Branches'));
+
+  showDetailSheet<void>(
+    context,
+    title: branch.name,
+    subtitle: branch.address.full.isEmpty
+        ? branch.code
+        : '${branch.code} · ${branch.address.full}',
+    children: [
+      DetailRows(entries: {
+        'Status': branch.status.label,
+        if (branch.isHeadquarters) 'Role': 'Headquarters',
+        'Established': Fmt.date(branch.establishedAt),
+        'Branch pastor': branch.pastorId.isEmpty
+            ? 'Not assigned'
+            : ref.read(memberNameProvider(branch.pastorId)),
+        'Assistant pastor': (branch.assistantPastorId ?? '').isEmpty
+            ? ''
+            : ref.read(memberNameProvider(branch.assistantPastorId)),
+        'Members': Fmt.number(members.length),
+        'Departments': '${departments.length}',
+        'Services recorded': '${attendance.length}',
+        'Total giving': Fmt.currency(giving),
+      }),
+    ],
+    actions: [
+      if (canEdit)
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showBranchLeadershipForm(context, branch: branch);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit leadership'),
+        ),
+      FilledButton.icon(
+        onPressed: () {
+          ref.read(selectedBranchProvider.notifier).select(branch.id);
+          Navigator.of(context).pop();
+          showLocalSuccess(context, 'Now viewing ${branch.name}.');
+        },
+        icon: const Icon(Icons.filter_center_focus, size: 16),
+        label: const Text('Focus this branch'),
+      ),
+    ],
+  );
 }
 
-class _BranchCard extends ConsumerWidget {
-  const _BranchCard({required this.branch});
+Future<void> _deleteBranch(
+  BuildContext context,
+  WidgetRef ref,
+  Branch branch,
+) async {
+  final members =
+      ref.read(membersProvider).where((m) => m.branchId == branch.id).length;
 
-  final Branch branch;
+  final ok = await confirmDelete(
+    context,
+    what: branch.name,
+    consequence: members == 0
+        ? 'The branch has no members, so nothing else is affected.'
+        : 'This branch still has $members member(s). They will remain in the '
+            'database but will no longer belong to a visible branch — move them '
+            'first if you want them kept.',
+  );
+  if (!ok || !context.mounted) return;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final accent = accentColor(branch.accent);
-
-    final members = ref
-        .watch(membersProvider)
-        .where((m) => m.branchId == branch.id)
-        .toList();
-    final departments = ref
-        .watch(departmentsProvider)
-        .where((d) => d.branchId == branch.id)
-        .toList();
-    final attendance = ref
-        .watch(attendanceRecordsProvider)
-        .where((r) => r.branchId == branch.id)
-        .toList();
-    final giving = ref
-        .watch(donationsProvider)
-        .where((d) => d.branchId == branch.id)
-        .fold(0.0, (sum, d) => sum + d.amount);
-
-    final lastService = attendance.isEmpty ? null : attendance.first;
-
-    return SectionCard(
-      title: branch.name,
-      description: branch.address.full,
-      action: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: accent.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-        ),
-        child: Text(
-          branch.code,
-          style: theme.textTheme.labelSmall
-              ?.copyWith(color: accent, fontWeight: FontWeight.w800),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              StatusBadge(
-                label: branch.status.label,
-                tone: switch (branch.status) {
-                  BranchStatus.active => StatusTone.success,
-                  BranchStatus.planting => StatusTone.info,
-                  BranchStatus.dormant => StatusTone.neutral,
-                },
-              ),
-              if (branch.isHeadquarters)
-                const StatusBadge(
-                  label: 'Headquarters',
-                  tone: StatusTone.warning,
-                  showDot: false,
-                ),
-              StatusBadge(
-                label: 'Est. ${branch.establishedAt.year}',
-                tone: StatusTone.neutral,
-                showDot: false,
-              ),
-            ],
-          ),
-          const Divider(height: AppSpacing.lg),
-
-          // Leadership
-          PersonTile(
-            name: ref.watch(memberNameProvider(branch.pastorId)),
-            secondary: 'Branch pastor',
-            compact: true,
-          ),
-          if (branch.assistantPastorId != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            PersonTile(
-              name: ref.watch(memberNameProvider(branch.assistantPastorId)),
-              secondary: 'Assistant pastor',
-              compact: true,
-            ),
-          ],
-          const Divider(height: AppSpacing.lg),
-
-          // Vital statistics
-          Row(
-            children: [
-              _Metric(label: 'Members', value: Fmt.number(members.length)),
-              _Metric(label: 'Departments', value: '${departments.length}'),
-              _Metric(
-                label: 'Last service',
-                value: lastService == null
-                    ? '—'
-                    : Fmt.number(lastService.total),
-              ),
-              _Metric(label: 'Giving', value: Fmt.compactCurrency(giving)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: () =>
-                    showBranchLeadershipForm(context, branch: branch),
-                icon: const Icon(Icons.manage_accounts_outlined, size: 16),
-                label: const Text('Leadership'),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () {
-              ref.read(selectedBranchProvider.notifier).select(branch.id);
-              showLocalSuccess(
-                context,
-                'Now viewing ${branch.name}. Use the branch switcher to go back.',
-              );
-            },
-            icon: const Icon(Icons.filter_center_focus, size: 16),
-            label: const Text('Focus this branch'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
-  }
+  await ref.read(repositoryProvider).deleteBranch(branch.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, '${branch.name} removed.');
 }

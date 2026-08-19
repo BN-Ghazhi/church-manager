@@ -4,12 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../utils/clock.dart';
 import '../models/models.dart';
+import '../providers/auth.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
 import '../utils/formatters.dart';
 import '../widgets/data_table_view.dart';
 import '../widgets/feedback.dart';
 import '../widgets/member_form.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
+import '../widgets/member_detail_sheet.dart';
 import '../widgets/page_header.dart';
 import '../widgets/page_scaffold.dart';
 import '../widgets/person_tile.dart';
@@ -77,7 +81,8 @@ class MembersScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'members.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -224,10 +229,39 @@ class MembersScreen extends ConsumerWidget {
                 sortValue: (m) => m.status.label,
                 cell: (m) => StatusBadge.of(m.status),
               ),
+              TableColumn<Member>(
+                id: 'actions',
+                header: '',
+                width: 116,
+                cell: (m) => RowActions(
+                  onView: () => showMemberDetail(context, ref, m),
+                  onEdit: () => showMemberForm(context, member: m),
+                  onDelete: () => _deleteMember(context, ref, m),
+                ),
+              ),
             ],
           ),
         ),
       ],
     );
   }
+}
+
+Future<void> _deleteMember(
+  BuildContext context,
+  WidgetRef ref,
+  Member member,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: member.fullName,
+    consequence:
+        'Their giving history and attendance stay in the records for reporting, '
+        'but they will no longer appear in the directory.',
+  );
+  if (!ok || !context.mounted) return;
+
+  await ref.read(repositoryProvider).deleteMember(member.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, '${member.fullName} removed from the directory.');
 }

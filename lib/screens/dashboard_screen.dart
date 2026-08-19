@@ -308,7 +308,9 @@ class _Funnel extends StatelessWidget {
                       style: theme.textTheme.bodySmall
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    if (i > 0) ...[
+                    // On an empty database every stage is zero, and 0/0 is NaN
+                    // — which throws on .round() rather than printing oddly.
+                    if (i > 0 && steps[i - 1].value > 0) ...[
                       const SizedBox(width: 6),
                       Text(
                         '${(steps[i].value / steps[i - 1].value * 100).round()}%',

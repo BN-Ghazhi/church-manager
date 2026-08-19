@@ -19,7 +19,7 @@ class SignInScreen extends ConsumerStatefulWidget {
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController();
+  final _username = TextEditingController();
   final _password = TextEditingController();
 
   bool _busy = false;
@@ -28,7 +28,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   void dispose() {
-    _email.dispose();
+    _username.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -43,7 +43,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
     final result = await ref
         .read(sessionProvider.notifier)
-        .signIn(_email.text, _password.text);
+        .signIn(_username.text, _password.text);
 
     if (!mounted) return;
 
@@ -119,17 +119,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           const SizedBox(height: AppSpacing.lg),
 
                           TextFormField(
-                            controller: _email,
+                            controller: _username,
                             autofocus: true,
-                            keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'you@gracechapel.org',
-                              prefixIcon: Icon(Icons.mail_outline, size: 18),
+                              labelText: 'Username',
+                              hintText: 'admin',
+                              prefixIcon: Icon(Icons.person_outline, size: 18),
                             ),
                             validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Enter your email'
+                                ? 'Enter your username'
                                 : null,
                           ),
                           const SizedBox(height: AppSpacing.md),
@@ -275,7 +274,7 @@ class _FirstSignIn extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm + 2),
-          row('Email', Seeder.firstAdminEmail),
+          row('Username', Seeder.firstAdminUsername),
           row('Password', Seeder.firstAdminPassword),
           const SizedBox(height: AppSpacing.sm),
           Text(

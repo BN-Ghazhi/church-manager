@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../providers/auth.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/collapsible.dart';
+import '../widgets/feedback.dart';
+import '../providers/permissions.dart';
 import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
@@ -53,7 +58,8 @@ class CareScreen extends ConsumerWidget {
             ),
           ],
         ),
-        ResponsiveGrid(
+        StatRow(
+          sectionKey: 'care.stats',
           minItemWidth: 250,
           maxColumns: 4,
           children: [
@@ -165,6 +171,16 @@ class CareScreen extends ConsumerWidget {
                   sortValue: (c) => c.status.label,
                   cell: (c) => StatusBadge.of(c.status),
                 ),
+                TableColumn<CareRequest>(
+                  id: 'actions',
+                  header: '',
+                  width: 116,
+                  cell: (c) => RowActions(
+                    onView: () => _showCare(context, ref, c),
+                    onEdit: () => showCareForm(context, request: c),
+                    onDelete: () => _deleteCare(context, ref, c),
+                  ),
+                ),
               ],
             ),
           ),
@@ -181,4 +197,54 @@ class CareScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+void _showCare(BuildContext context, WidgetRef ref, CareRequest request) {
+  showDetailSheet<void>(
+    context,
+    title: ref.read(memberNameProvider(request.memberId)),
+    subtitle: '${request.type.label} · ${request.priority.label} priority',
+    children: [
+      DetailRows(entries: {
+        'Member': ref.read(memberNameProvider(request.memberId)),
+        'Type': request.type.label,
+        'Priority': request.priority.label,
+        'Status': request.status.label,
+        'Raised': Fmt.dateTime(request.createdAt),
+        'Assigned to': (request.assignedToId ?? '').isEmpty
+            ? 'Unassigned'
+            : ref.read(memberNameProvider(request.assignedToId)),
+        'Branch': ref.read(branchNameProvider(request.branchId)),
+        'Summary': request.summary,
+      }),
+    ],
+    actions: [
+      if (ref.read(canEditProvider('Care')))
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            showCareForm(context, request: request);
+          },
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit'),
+        ),
+    ],
+  );
+}
+
+Future<void> _deleteCare(
+  BuildContext context,
+  WidgetRef ref,
+  CareRequest request,
+) async {
+  final ok = await confirmDelete(
+    context,
+    what: 'the ${request.type.label.toLowerCase()} request for '
+        '${ref.read(memberNameProvider(request.memberId))}',
+    consequence: 'It leaves the pastoral care queue.',
+  );
+  if (!ok || !context.mounted) return;
+  await ref.read(repositoryProvider).deleteCareRequest(request.id);
+  if (!context.mounted) return;
+  showLocalSuccess(context, 'Care request removed.');
 }

@@ -18,13 +18,21 @@ import 'form_scaffold.dart';
 
 /* -------------------------------------------------------------- giving */
 
-Future<void> showDonationForm(BuildContext context) => showDialog<void>(
+/// One form for both recording and correcting a gift.
+///
+/// Pass [donation] to edit it. Every create form in this file follows the same
+/// shape, so "edit" is never a second, separately-maintained screen that can
+/// drift out of step with the one used to enter the record.
+Future<void> showDonationForm(BuildContext context, {Donation? donation}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _DonationForm(),
+      builder: (_) => _DonationForm(donation: donation),
     );
 
 class _DonationForm extends ConsumerStatefulWidget {
-  const _DonationForm();
+  const _DonationForm({this.donation});
+
+  final Donation? donation;
 
   @override
   ConsumerState<_DonationForm> createState() => _DonationFormState();
@@ -45,7 +53,18 @@ class _DonationFormState extends ConsumerState<_DonationForm> {
   @override
   void initState() {
     super.initState();
-    _branchId = defaultBranchId(ref);
+    final d = widget.donation;
+    _branchId = d?.branchId ?? defaultBranchId(ref);
+    if (d != null) {
+      _amount.text = d.amount.toStringAsFixed(2);
+      _donor.text = d.donorName;
+      _reference.text = d.reference;
+      _fund = d.fund;
+      _method = d.method;
+      _date = d.date;
+      _memberId = d.memberId;
+      _anonymous = d.memberId == null;
+    }
   }
 
   @override
@@ -60,12 +79,15 @@ class _DonationFormState extends ConsumerState<_DonationForm> {
   Widget build(BuildContext context) {
     final amount = double.tryParse(_amount.text.replaceAll(',', '')) ?? 0;
 
+    final editing = widget.donation != null;
+
     return FormDialog(
-      title: 'Record giving',
+      title: editing ? 'Edit giving' : 'Record giving',
       description: 'Saved to the giving ledger for the chosen branch.',
-      submitLabel: 'Record giving',
-      successMessage:
-          'Recorded ${Fmt.currency(amount)} to ${_fund.label}.',
+      submitLabel: editing ? 'Save changes' : 'Record giving',
+      successMessage: editing
+          ? 'Updated to ${Fmt.currency(amount)}.'
+          : 'Recorded ${Fmt.currency(amount)} to ${_fund.label}.',
       fields: [
         BranchField(
           value: _branchId,
@@ -128,6 +150,19 @@ class _DonationFormState extends ConsumerState<_DonationForm> {
             ? (_donor.text.trim().isEmpty ? 'Anonymous' : _donor.text.trim())
             : ref.read(memberNameProvider(member));
 
+        if (editing) {
+          await ref.read(repositoryProvider).updateDonation(
+                widget.donation!.id,
+                donorName: donorName,
+                amount: double.parse(_amount.text.replaceAll(',', '').trim()),
+                fund: _fund,
+                method: _method,
+                date: _date,
+                memberId: member,
+              );
+          return;
+        }
+
         await ref.read(repositoryProvider).recordDonation(
               branchId: _branchId!,
               memberId: member,
@@ -145,13 +180,16 @@ class _DonationFormState extends ConsumerState<_DonationForm> {
   }
 }
 
-Future<void> showExpenseForm(BuildContext context) => showDialog<void>(
+Future<void> showExpenseForm(BuildContext context, {ExpenseRecord? expense}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _ExpenseForm(),
+      builder: (_) => _ExpenseForm(expense: expense),
     );
 
 class _ExpenseForm extends ConsumerStatefulWidget {
-  const _ExpenseForm();
+  const _ExpenseForm({this.expense});
+
+  final ExpenseRecord? expense;
 
   @override
   ConsumerState<_ExpenseForm> createState() => _ExpenseFormState();
@@ -170,7 +208,16 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
   @override
   void initState() {
     super.initState();
-    _branchId = defaultBranchId(ref);
+    final e = widget.expense;
+    _branchId = e?.branchId ?? defaultBranchId(ref);
+    if (e != null) {
+      _vendor.text = e.vendor;
+      _category.text = e.category;
+      _amount.text = e.amount.toStringAsFixed(2);
+      _status = e.status;
+      _date = e.date;
+      _approvedBy = e.approvedBy;
+    }
   }
 
   @override
@@ -183,11 +230,15 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.expense != null;
+
     return FormDialog(
-      title: 'Record expense',
+      title: editing ? 'Edit expense' : 'Record expense',
       description: 'Saved to the expense ledger for the chosen branch.',
-      submitLabel: 'Record expense',
-      successMessage: 'Recorded expense for ${_vendor.text.trim()}.',
+      submitLabel: editing ? 'Save changes' : 'Record expense',
+      successMessage: editing
+          ? 'Updated the expense for ${_vendor.text.trim()}.'
+          : 'Recorded expense for ${_vendor.text.trim()}.',
       fields: [
         BranchField(
           value: _branchId,
@@ -231,7 +282,16 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
           onChanged: (v) => setState(() => _approvedBy = v),
         ),
       ],
-      onSubmit: () => ref.read(repositoryProvider).recordExpense(
+      onSubmit: () => editing
+          ? ref.read(repositoryProvider).updateExpense(
+                widget.expense!.id,
+                category: _category.text.trim(),
+                vendor: _vendor.text.trim(),
+                amount: double.parse(_amount.text.replaceAll(',', '').trim()),
+                date: _date,
+                status: _status,
+              )
+          : ref.read(repositoryProvider).recordExpense(
             branchId: _branchId!,
             category: _category.text.trim(),
             vendor: _vendor.text.trim(),
@@ -246,13 +306,19 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
 
 /* ------------------------------------------------------------ attendance */
 
-Future<void> showServiceRecordForm(BuildContext context) => showDialog<void>(
+Future<void> showServiceRecordForm(
+  BuildContext context, {
+  AttendanceRecord? record,
+}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _ServiceRecordForm(),
+      builder: (_) => _ServiceRecordForm(record: record),
     );
 
 class _ServiceRecordForm extends ConsumerStatefulWidget {
-  const _ServiceRecordForm();
+  const _ServiceRecordForm({this.record});
+
+  final AttendanceRecord? record;
 
   @override
   ConsumerState<_ServiceRecordForm> createState() =>
@@ -272,7 +338,16 @@ class _ServiceRecordFormState extends ConsumerState<_ServiceRecordForm> {
   @override
   void initState() {
     super.initState();
-    _branchId = defaultBranchId(ref);
+    final r = widget.record;
+    _branchId = r?.branchId ?? defaultBranchId(ref);
+    if (r != null) {
+      _service.text = r.serviceName;
+      _adults.text = '${r.adults}';
+      _children.text = '${r.children}';
+      _visitors.text = '${r.visitors}';
+      _online.text = '${r.online}';
+      _date = r.date;
+    }
   }
 
   @override
@@ -295,13 +370,16 @@ class _ServiceRecordFormState extends ConsumerState<_ServiceRecordForm> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.record != null;
+
     return FormDialog(
-      title: 'New service record',
+      title: editing ? 'Edit service record' : 'New service record',
       description:
           'Headcounts for one service. Individual check-ins are recorded '
           'separately on the check-in tab.',
-      submitLabel: 'Save record',
-      successMessage: 'Service record saved.',
+      submitLabel: editing ? 'Save changes' : 'Save record',
+      successMessage:
+          editing ? 'Service record updated.' : 'Service record saved.',
       fields: [
         BranchField(value: _branchId, onChanged: (v) => setState(() => _branchId = v)),
         PlainTextField(
@@ -321,7 +399,17 @@ class _ServiceRecordFormState extends ConsumerState<_ServiceRecordForm> {
         _count('Visitors', _visitors),
         _count('Online', _online),
       ],
-      onSubmit: () => ref.read(repositoryProvider).recordAttendance(
+      onSubmit: () => editing
+          ? ref.read(repositoryProvider).updateAttendanceRecord(
+                widget.record!.id,
+                serviceName: _service.text.trim(),
+                date: _date,
+                adults: int.parse(_adults.text.trim()),
+                children: int.parse(_children.text.trim()),
+                visitors: int.parse(_visitors.text.trim()),
+                online: int.parse(_online.text.trim()),
+              )
+          : ref.read(repositoryProvider).recordAttendance(
             branchId: _branchId!,
             date: _date,
             serviceName: _service.text.trim(),
@@ -336,13 +424,16 @@ class _ServiceRecordFormState extends ConsumerState<_ServiceRecordForm> {
 
 /* ---------------------------------------------------------------- events */
 
-Future<void> showEventForm(BuildContext context) => showDialog<void>(
+Future<void> showEventForm(BuildContext context, {ChurchEvent? event}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _EventForm(),
+      builder: (_) => _EventForm(event: event),
     );
 
 class _EventForm extends ConsumerStatefulWidget {
-  const _EventForm();
+  const _EventForm({this.event});
+
+  final ChurchEvent? event;
 
   @override
   ConsumerState<_EventForm> createState() => _EventFormState();
@@ -364,7 +455,19 @@ class _EventFormState extends ConsumerState<_EventForm> {
   @override
   void initState() {
     super.initState();
-    _branchId = defaultBranchId(ref);
+    final e = widget.event;
+    _branchId = e?.branchId ?? defaultBranchId(ref);
+    if (e != null) {
+      _title.text = e.title;
+      _location.text = e.location;
+      _expected.text = '${e.expectedAttendance}';
+      _category = e.category;
+      _date = e.startsAt;
+      _startHour = e.startsAt.hour;
+      _hours = e.endsAt.difference(e.startsAt).inHours.clamp(1, 12);
+      _recurring = e.isRecurring;
+      _organizerId = e.organizerId;
+    }
   }
 
   @override
@@ -377,11 +480,15 @@ class _EventFormState extends ConsumerState<_EventForm> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.event != null;
+
     return FormDialog(
-      title: 'Create event',
+      title: editing ? 'Edit event' : 'Create event',
       description: 'Added to the calendar for the chosen branch.',
-      submitLabel: 'Create event',
-      successMessage: '"${_title.text.trim()}" added to the calendar.',
+      submitLabel: editing ? 'Save changes' : 'Create event',
+      successMessage: editing
+          ? '"${_title.text.trim()}" updated.'
+          : '"${_title.text.trim()}" added to the calendar.',
       fields: [
         BranchField(
           value: _branchId,
@@ -462,6 +569,18 @@ class _EventFormState extends ConsumerState<_EventForm> {
       ],
       onSubmit: () {
         final start = DateTime.utc(_date.year, _date.month, _date.day, _startHour);
+        if (editing) {
+          return ref.read(repositoryProvider).updateEvent(
+                widget.event!.id,
+                title: _title.text.trim(),
+                category: _category,
+                startsAt: start,
+                endsAt: start.add(Duration(hours: _hours)),
+                location: _location.text.trim(),
+                expectedAttendance:
+                    int.tryParse(_expected.text.trim()) ?? 0,
+              );
+        }
         return ref.read(repositoryProvider).createEvent(
               branchId: _branchId!,
               title: _title.text.trim(),
@@ -480,13 +599,16 @@ class _EventFormState extends ConsumerState<_EventForm> {
 
 /* ------------------------------------------------------------------ care */
 
-Future<void> showCareForm(BuildContext context) => showDialog<void>(
+Future<void> showCareForm(BuildContext context, {CareRequest? request}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _CareForm(),
+      builder: (_) => _CareForm(request: request),
     );
 
 class _CareForm extends ConsumerStatefulWidget {
-  const _CareForm();
+  const _CareForm({this.request});
+
+  final CareRequest? request;
 
   @override
   ConsumerState<_CareForm> createState() => _CareFormState();
@@ -504,7 +626,15 @@ class _CareFormState extends ConsumerState<_CareForm> {
   @override
   void initState() {
     super.initState();
-    _branchId = defaultBranchId(ref);
+    final r = widget.request;
+    _branchId = r?.branchId ?? defaultBranchId(ref);
+    if (r != null) {
+      _summary.text = r.summary;
+      _memberId = r.memberId;
+      _assignedToId = r.assignedToId;
+      _type = r.type;
+      _priority = r.priority;
+    }
   }
 
   @override
@@ -515,11 +645,14 @@ class _CareFormState extends ConsumerState<_CareForm> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.request != null;
+
     return FormDialog(
-      title: 'Log a care request',
+      title: editing ? 'Edit care request' : 'Log a care request',
       description: 'Added to the pastoral care queue for the chosen branch.',
-      submitLabel: 'Log request',
-      successMessage: 'Care request logged.',
+      submitLabel: editing ? 'Save changes' : 'Log request',
+      successMessage:
+          editing ? 'Care request updated.' : 'Care request logged.',
       fields: [
         BranchField(
           value: _branchId,
@@ -565,7 +698,15 @@ class _CareFormState extends ConsumerState<_CareForm> {
           onChanged: (v) => setState(() => _assignedToId = v),
         ),
       ],
-      onSubmit: () => ref.read(repositoryProvider).createCareRequest(
+      onSubmit: () => editing
+          ? ref.read(repositoryProvider).updateCareRequest(
+                widget.request!.id,
+                type: _type,
+                summary: _summary.text.trim(),
+                priority: _priority,
+                assignedToId: _assignedToId,
+              )
+          : ref.read(repositoryProvider).createCareRequest(
             branchId: _branchId!,
             memberId: _memberId!,
             type: _type,
@@ -579,13 +720,16 @@ class _CareFormState extends ConsumerState<_CareForm> {
 
 /* ---------------------------------------------------------------- assets */
 
-Future<void> showAssetForm(BuildContext context) => showDialog<void>(
+Future<void> showAssetForm(BuildContext context, {AssetItem? asset}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _AssetForm(),
+      builder: (_) => _AssetForm(asset: asset),
     );
 
 class _AssetForm extends ConsumerStatefulWidget {
-  const _AssetForm();
+  const _AssetForm({this.asset});
+
+  final AssetItem? asset;
 
   @override
   ConsumerState<_AssetForm> createState() => _AssetFormState();
@@ -618,11 +762,15 @@ class _AssetFormState extends ConsumerState<_AssetForm> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.asset != null;
+
     return FormDialog(
-      title: 'Register asset',
+      title: editing ? 'Edit asset' : 'Register asset',
       description: 'Added to the equipment register for the chosen branch.',
-      submitLabel: 'Register asset',
-      successMessage: '${_name.text.trim()} added to the register.',
+      submitLabel: editing ? 'Save changes' : 'Register asset',
+      successMessage: editing
+          ? '${_name.text.trim()} updated.'
+          : '${_name.text.trim()} added to the register.',
       fields: [
         BranchField(value: _branchId, onChanged: (v) => setState(() => _branchId = v)),
         PlainTextField(
@@ -658,7 +806,18 @@ class _AssetFormState extends ConsumerState<_AssetForm> {
           hint: 'Main Auditorium',
         ),
       ],
-      onSubmit: () => ref.read(repositoryProvider).createAsset(
+      onSubmit: () => editing
+          ? ref.read(repositoryProvider).updateAsset(
+                widget.asset!.id,
+                name: _name.text.trim(),
+                category: _category.text.trim(),
+                serial: _serial.text.trim(),
+                condition: _condition,
+                location: _location.text.trim(),
+                purchasedAt: _purchased,
+                value: double.parse(_value.text.replaceAll(',', '').trim()),
+              )
+          : ref.read(repositoryProvider).createAsset(
             branchId: _branchId!,
             name: _name.text.trim(),
             category: _category.text.trim(),
@@ -872,7 +1031,7 @@ class _InviteUserForm extends ConsumerStatefulWidget {
 
 class _InviteUserFormState extends ConsumerState<_InviteUserForm> {
   final _name = TextEditingController();
-  final _email = TextEditingController();
+  final _username = TextEditingController();
   final _password = TextEditingController();
 
   UserRole _role = UserRole.branchAdmin;
@@ -888,7 +1047,7 @@ class _InviteUserFormState extends ConsumerState<_InviteUserForm> {
   @override
   void dispose() {
     _name.dispose();
-    _email.dispose();
+    _username.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -917,15 +1076,18 @@ class _InviteUserFormState extends ConsumerState<_InviteUserForm> {
           required: true,
         ),
         LabelledField(
-          label: 'Email',
-          hint: 'This is their username.',
+          label: 'Username',
+          hint: 'What they type to sign in. Letters, numbers, dots and dashes.',
           child: TextFormField(
-            controller: _email,
-            decoration: const InputDecoration(hintText: 'esther@gracechapel.org'),
+            controller: _username,
+            decoration: const InputDecoration(hintText: 'esther.asante'),
             validator: (v) {
               final value = (v ?? '').trim();
-              if (value.isEmpty) return 'Email is required';
-              if (!value.contains('@')) return 'Enter a valid email';
+              if (value.isEmpty) return 'A username is required';
+              if (value.length < 3) return 'At least three characters';
+              if (!RegExp(r'^[a-zA-Z0-9._-]+$').hasMatch(value)) {
+                return 'Letters, numbers, dots, dashes and underscores only';
+              }
               return null;
             },
           ),
@@ -980,12 +1142,12 @@ class _InviteUserFormState extends ConsumerState<_InviteUserForm> {
       ],
       onSubmit: () async {
         final repo = ref.read(repositoryProvider);
-        if (await repo.emailExists(_email.text)) {
-          throw Exception('That email is already in use.');
+        if (await repo.usernameExists(_username.text)) {
+          throw Exception('That username is already taken.');
         }
         await repo.createUser(
           name: _name.text.trim(),
-          email: _email.text.trim(),
+          username: _username.text.trim(),
           password: _password.text,
           role: _role,
           branchId: _branchId,

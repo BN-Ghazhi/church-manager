@@ -54,7 +54,7 @@ class UserSwitcher extends ConsumerWidget {
             children: [
               Text(user.name, style: theme.textTheme.bodySmall),
               Text(
-                user.email,
+                user.username,
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: scheme.onSurfaceVariant),
               ),
