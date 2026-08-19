@@ -48,12 +48,29 @@ It then appears in the applications menu as **Church Management**, and as
 Program files and data are in **separate** directories deliberately, so
 reinstalling or upgrading never touches the church's records.
 
-To remove:
+### Uninstalling
+
+The installer places an uninstaller alongside the app, so removing it never needs
+this project folder:
+
+* **From the applications menu** — search for **"Uninstall Church Management"**.
+  It asks for confirmation, then removes the program.
+* **From a terminal** —
+  `~/.local/lib/org.gracechapel.churchms/uninstall`
+
+**Your records are kept.** Uninstalling removes the program, not the church's
+data, so reinstalling picks up exactly where you left off. To delete the records
+as well:
 
 ```bash
-./packaging/uninstall-linux.sh            # keeps the database
-./packaging/uninstall-linux.sh --purge    # deletes it too
+~/.local/lib/org.gracechapel.churchms/uninstall --purge
 ```
+
+That is irreversible, so back the database up first if there is any doubt.
+
+If you installed with the `.deb` instead, use `sudo apt remove church-management`
+— and note that the database is in your home directory either way, so apt does
+not touch it.
 
 ---
 

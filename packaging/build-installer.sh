@@ -109,6 +109,100 @@ StartupWMClass=churchms
 DESKTOP
 chmod 644 "$DESKTOP_DIR/$APP_ID.desktop"
 
+# An uninstaller, installed alongside the app.
+#
+# Without this, removing the app would need the project folder — which will not
+# exist on a machine that only ever ran the installer. It is written here rather
+# than shipped in the payload so the paths are already resolved.
+cat > "$INSTALL_DIR/uninstall" <<'UNINSTALL'
+#!/usr/bin/env bash
+#
+# Removes Church Management.
+#
+# Your records are kept by default: uninstalling the program must not destroy the
+# church's data. Pass --purge to delete the database as well.
+
+set -euo pipefail
+
+APP_ID="org.gracechapel.churchms"
+APP_NAME="Church Management"
+INSTALL_DIR="$HOME/.local/lib/$APP_ID"
+DATA_DIR="$HOME/.local/share/$APP_ID"
+DB="$DATA_DIR/church_management.sqlite"
+PURGE="${1:-}"
+
+ask() {
+  if command -v zenity >/dev/null 2>&1; then
+    zenity --question --title="Remove $APP_NAME?" --width=400 \
+      --text="$1" 2>/dev/null
+  else
+    read -r -p "$1 [y/N] " reply
+    [[ "$reply" == [yY]* ]]
+  fi
+}
+
+tell() {
+  printf '%s\n' "$1"
+  if command -v zenity >/dev/null 2>&1; then
+    ( zenity --info --title="$APP_NAME" --text="$1" --width=400 \
+        --timeout=12 >/dev/null 2>&1 || true ) &
+  fi
+}
+
+# Launched from the menu there is no terminal, so confirm before destroying
+# anything.
+if [[ "$PURGE" != "--purge" && "$PURGE" != "--yes" ]]; then
+  if ! ask "Remove $APP_NAME?
+
+Your records are kept and will still be there if you reinstall."; then
+    exit 0
+  fi
+fi
+
+# Close the app first, or files are removed from under a running process.
+pkill -x churchms 2>/dev/null || true
+sleep 1
+
+rm -rf "$INSTALL_DIR"
+rm -f "$HOME/.local/bin/churchms"
+rm -f "$HOME/.local/share/applications/$APP_ID.desktop"
+rm -f "$HOME/.local/share/applications/$APP_ID-uninstall.desktop"
+rm -f "$HOME/.local/share/applications/church-management-installer.desktop"
+rm -f "$HOME/.local/share/icons/hicolor/256x256/apps/$APP_ID.png"
+
+command -v update-desktop-database >/dev/null 2>&1 \
+  && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+
+if [[ "$PURGE" == "--purge" ]]; then
+  rm -rf "$DATA_DIR"
+  tell "$APP_NAME and all its records have been removed."
+elif [[ -f "$DB" ]]; then
+  tell "$APP_NAME has been removed.
+
+Your records are still here:
+$DB
+
+Reinstalling picks them up again. To delete them too, run:
+$INSTALL_DIR/uninstall --purge"
+else
+  tell "$APP_NAME has been removed."
+fi
+UNINSTALL
+chmod +x "$INSTALL_DIR/uninstall"
+
+# A menu entry for it, so removing the app does not require a terminal either.
+cat > "$DESKTOP_DIR/$APP_ID-uninstall.desktop" <<UNDESKTOP
+[Desktop Entry]
+Type=Application
+Name=Uninstall $APP_NAME
+Comment=Removes $APP_NAME but keeps your records
+Exec=$INSTALL_DIR/uninstall
+Icon=$APP_ID
+Terminal=false
+Categories=System;
+UNDESKTOP
+chmod 644 "$DESKTOP_DIR/$APP_ID-uninstall.desktop"
+
 command -v update-desktop-database >/dev/null 2>&1 \
   && update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
 command -v gtk-update-icon-cache >/dev/null 2>&1 \
@@ -119,9 +213,11 @@ notify "$APP_NAME installed" \
 
 Find it in your applications menu, or run 'churchms' in a terminal.
 
-Your data is kept separately at:
+To remove it later, use \"Uninstall $APP_NAME\" in the same menu.
+
+Your records live at:
 $DATA_DIR
-and survives reinstalling."
+and survive both reinstalling and uninstalling."
 
 # Open the app straight away: someone who just ran an installer wants to see the
 # thing they installed. Detached, so the installer exits immediately.
