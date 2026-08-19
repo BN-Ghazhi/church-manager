@@ -1,4 +1,4 @@
-import 'package:churchms/data/operations_data.dart';
+import 'package:churchms/data/operations_data.dart' show permissionMatrix;
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
@@ -10,6 +10,8 @@ import 'package:churchms/providers/repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 
 /// Verifies the two-dimensional access model actually restricts data, rather
 /// than merely hiding buttons.
@@ -25,6 +27,33 @@ void main() {
     await Seeder(db).seedFirstRun();
 
     final repo = ChurchRepository(db);
+    final fixtures = Fixtures(db);
+
+    // A fresh database holds one branch and one admin, so this builds the
+    // multi-branch, multi-role situation these tests are about. Each account is
+    // attached to the branch it should be confined to.
+    final hq = (await repo.watchBranches().first).single.id;
+    final tema = await fixtures.branch(name: 'Tema', code: 'TEM');
+    final kumasi = await fixtures.branch(name: 'Kumasi', code: 'KUM');
+
+    for (final b in [hq, tema, kumasi]) {
+      await fixtures.members(branchId: b, count: 4);
+    }
+
+    final head = await fixtures.member(branchId: hq, firstName: 'Head');
+    final dept = await fixtures.department(branchId: hq, headId: head);
+
+    await fixtures.user(role: UserRole.seniorPastor, branchId: hq);
+    await fixtures.user(role: UserRole.hqFinance, branchId: hq);
+    await fixtures.user(role: UserRole.branchPastor, branchId: tema);
+    await fixtures.user(role: UserRole.assistantPastor, branchId: tema);
+    await fixtures.user(role: UserRole.branchAdmin, branchId: kumasi);
+    await fixtures.user(role: UserRole.branchFinance, branchId: kumasi);
+    await fixtures.user(
+      role: UserRole.departmentHead, branchId: hq, departmentId: dept);
+    await fixtures.user(
+      role: UserRole.volunteer, branchId: hq, departmentId: dept);
+
     users = await repo.watchUsers().first;
     branches = await repo.watchBranches().first;
   });
@@ -142,7 +171,7 @@ void main() {
 
     test('only a super admin may edit roles', () async {
       // Not every role has a seeded account; check the ones that do.
-      final seeded = staffUsers.map((u) => u.role).toSet();
+      final seeded = users.map((u) => u.role).toSet();
       for (final role in seeded) {
         final c = await containerFor(userWithRole(role));
         expect(

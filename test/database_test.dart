@@ -6,44 +6,69 @@ import 'package:churchms/models/models.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fixtures.dart';
+
 /// Verifies the app's own storage: that it seeds, persists writes, enforces
 /// referential integrity, and authenticates without ever storing a password.
 void main() {
   late AppDatabase db;
   late ChurchRepository repo;
+  late Fixtures fixtures;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = ChurchRepository(db);
+    fixtures = Fixtures(db);
     await Seeder(db).seedFirstRun();
   });
 
   tearDown(() => db.close());
 
   group('seeding', () {
-    test('a fresh database is populated', () async {
+    test('a fresh database holds only what is needed to start', () async {
       final branches = await repo.watchBranches().first;
       final members = await repo.watchMembers().first;
       final departments = await repo.watchDepartments().first;
+      final donations = await repo.watchDonations().first;
       final users = await repo.watchUsers().first;
 
-      expect(branches.length, 6);
-      expect(members.length, 240);
-      expect(departments, isNotEmpty);
-      expect(users, isNotEmpty);
+      // One headquarters branch and one administrator, because a member must
+      // belong to a branch and somebody has to be able to sign in. Nothing else
+      // is invented — the church enters its own records.
+      expect(branches, hasLength(1));
+      expect(branches.single.isHeadquarters, isTrue);
+      expect(users, hasLength(1));
+      expect(users.single.role, UserRole.superAdmin);
+
+      expect(members, isEmpty);
+      expect(departments, isEmpty);
+      expect(donations, isEmpty);
     });
 
-    test('every branch has its pastor attached after seeding', () async {
-      final branches = await repo.watchBranches().first;
-      for (final b in branches) {
-        expect(b.pastorId, isNotEmpty, reason: '${b.name} has no pastor');
-      }
+    test('the department catalogue is available to build from', () async {
+      final types = await repo.watchDepartmentTypes().first;
+
+      // The catalogue is structure, not data: it defines what a Youth or
+      // Children's department is, so the same department stays comparable
+      // between branches.
+      expect(types, isNotEmpty);
+      expect(types.any((t) => t.name.contains('Youth')), isTrue);
+      expect(types.any((t) => t.name.contains("Children")), isTrue);
     });
 
-    test('department members are linked through the join table', () async {
-      final departments = await repo.watchDepartments().first;
-      final withMembers = departments.where((d) => d.memberIds.isNotEmpty);
-      expect(withMembers, isNotEmpty);
+    test('the church name defaults to Kingdom Grace Chapel', () async {
+      final settings = await repo.watchSettings().first;
+      expect(settings['church.name'], 'Kingdom Grace Chapel');
+      expect(settings['church.shortName'], 'K.G.C.');
+    });
+
+    test('the first administrator can sign in', () async {
+      final signedIn = await repo.signIn(
+        Seeder.firstAdminEmail,
+        Seeder.firstAdminPassword,
+      );
+      expect(signedIn, isNotNull);
+      expect(signedIn!.canSeeAllBranches, isTrue);
     });
   });
 
@@ -70,52 +95,41 @@ void main() {
     });
 
     test('an edit survives a re-read', () async {
-      final members = await repo.watchMembers().first;
-      final target = members.first;
+      final branch = await fixtures.branch();
+      final id = await fixtures.member(branchId: branch);
 
-      await repo.updateMember(target.id, phone: '+233 24 900 0000');
-      final reloaded = await repo.findMember(target.id);
+      await repo.updateMember(id, phone: '+233 24 900 0000');
+      final reloaded = await repo.findMember(id);
 
       expect(reloaded!.phone, '+233 24 900 0000');
     });
 
     test('a soft-deleted member disappears from queries', () async {
-      final members = await repo.watchMembers().first;
-      final target = members.first;
+      final branch = await fixtures.branch();
+      final ids = await fixtures.members(branchId: branch, count: 3);
+      final before = await repo.watchMembers().first;
 
-      await repo.deleteMember(target.id);
+      await repo.deleteMember(ids.first);
 
       final after = await repo.watchMembers().first;
-      expect(after.any((m) => m.id == target.id), isFalse);
-      expect(after.length, members.length - 1);
+      expect(after.any((m) => m.id == ids.first), isFalse);
+      expect(after.length, before.length - 1);
     });
 
     test('department membership can be replaced', () async {
-      final departments = await repo.watchDepartments().first;
-      final types = await repo.watchDepartmentTypes().first;
+      // Worship has no age restriction, so every member of the branch is
+      // eligible. Age-gated departments filter ineligible members out by
+      // design — that is covered in writes_test.dart.
+      final branch = await fixtures.branch();
+      final head = await fixtures.member(branchId: branch, firstName: 'Head');
+      final dept = await fixtures.department(branchId: branch, headId: head);
+      final fresh =
+          (await fixtures.members(branchId: branch, count: 3)).toSet();
 
-      // Use a department with no age restriction, so every same-branch member
-      // is eligible. Age-gated departments filter ineligible members out by
-      // design — that behaviour is covered in writes_test.dart.
-      final unrestricted = types
-          .where((t) => t.ageRange == null)
-          .map((t) => t.id)
-          .toSet();
-      final dept = departments.firstWhere(
-        (d) => d.memberIds.isNotEmpty && unrestricted.contains(d.typeId),
-      );
-
-      final members = await repo.watchMembers().first;
-      final fresh = members
-          .where((m) => m.branchId == dept.branchId)
-          .take(3)
-          .map((m) => m.id)
-          .toSet();
-
-      await repo.setDepartmentMembers(dept.id, fresh);
+      await repo.setDepartmentMembers(dept, fresh);
 
       final after = await repo.watchDepartments().first;
-      final updated = after.firstWhere((d) => d.id == dept.id);
+      final updated = after.firstWhere((d) => d.id == dept);
       expect(updated.memberIds.toSet(), fresh);
     });
 
@@ -190,8 +204,8 @@ void main() {
   group('authentication', () {
     test('a correct password signs in', () async {
       final user = await repo.signIn(
-        'ansah@gracechapel.org',
-        Seeder.demoPassword,
+        Seeder.firstAdminEmail,
+        Seeder.firstAdminPassword,
       );
       expect(user, isNotNull);
       expect(user!.role, UserRole.superAdmin);
@@ -199,7 +213,7 @@ void main() {
 
     test('a wrong password is rejected', () async {
       final user =
-          await repo.signIn('ansah@gracechapel.org', 'not-the-password');
+          await repo.signIn(Seeder.firstAdminEmail, 'not-the-password');
       expect(user, isNull);
     });
 
@@ -210,8 +224,8 @@ void main() {
 
     test('email is case-insensitive', () async {
       final user = await repo.signIn(
-        'ANSAH@GraceChapel.org',
-        Seeder.demoPassword,
+        Seeder.firstAdminEmail.toUpperCase(),
+        Seeder.firstAdminPassword,
       );
       expect(user, isNotNull);
     });
@@ -221,20 +235,27 @@ void main() {
       final target = users.first;
       await repo.updateUserRole(target.id, status: AccountStatus.suspended);
 
-      final user = await repo.signIn(target.email, Seeder.demoPassword);
+      final user = await repo.signIn(target.email, Seeder.firstAdminPassword);
       expect(user, isNull);
     });
 
     test('a department head signs in scoped to their department', () async {
-      final users = await repo.watchUsers().first;
-      final head = users.firstWhere(
-        (u) => u.role == UserRole.departmentHead && u.departmentId != null,
+      final branch = await fixtures.branch();
+      final head = await fixtures.member(branchId: branch, firstName: 'Head');
+      final dept = await fixtures.department(branchId: branch, headId: head);
+
+      await fixtures.user(
+        role: UserRole.departmentHead,
+        branchId: branch,
+        departmentId: dept,
+        email: 'head@example.com',
+        password: 'headpass1',
       );
 
-      final signedIn = await repo.signIn(head.email, Seeder.demoPassword);
+      final signedIn = await repo.signIn('head@example.com', 'headpass1');
       expect(signedIn, isNotNull);
-      expect(signedIn!.departmentId, isNotNull);
-      expect(signedIn.branchId, isNotNull);
+      expect(signedIn!.departmentId, dept);
+      expect(signedIn.branchId, branch);
       expect(signedIn.role.scope, RoleScope.ownDepartment);
     });
 
@@ -244,7 +265,7 @@ void main() {
 
       await repo.changePassword(target.id, 'brand-new-pass9');
 
-      expect(await repo.signIn(target.email, Seeder.demoPassword), isNull);
+      expect(await repo.signIn(target.email, Seeder.firstAdminPassword), isNull);
       expect(await repo.signIn(target.email, 'brand-new-pass9'), isNotNull);
     });
 
@@ -271,8 +292,8 @@ void main() {
     test('the plain password is never stored', () async {
       final rows = await db.select(db.userAccounts).get();
       for (final row in rows) {
-        expect(row.passwordHash, isNot(contains(Seeder.demoPassword)));
-        expect(row.passwordHash, isNot(equals(Seeder.demoPassword)));
+        expect(row.passwordHash, isNot(contains(Seeder.firstAdminPassword)));
+        expect(row.passwordHash, isNot(equals(Seeder.firstAdminPassword)));
       }
     });
 

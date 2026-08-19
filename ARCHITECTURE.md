@@ -38,6 +38,32 @@ dark themed, passing `flutter analyze` with zero issues and 21 tests.
 /settings       Church profile, services, appearance, preferences, integrations
 ```
 
+### The app ships empty
+
+A fresh database holds one headquarters branch, one administrator and the
+department catalogue. That is the minimum: a member must belong to a branch, and
+somebody has to be able to sign in.
+
+Everything else — members, giving, attendance, events, departments — is entered
+by the church. There was a bundled demo congregation of 240 members; it is gone,
+because seeded examples only have to be found and deleted before real use, and
+they make it hard to tell whether a figure on screen is yours or invented.
+
+The department *catalogue* is kept, because it is structure rather than data: it
+defines what a Youth or Children's department is, which is what makes the same
+department comparable between branches.
+
+Removing the demo data surfaced three things that had been hidden by it:
+
+* The growth funnel counted `ministryIds`, which departments replaced, so
+  "Serving in a ministry" always read zero and the funnel collapsed.
+* KPI tiles carried hardcoded trend percentages and generated sparklines — they
+  looked like real history and were not. Both are now omitted until there is
+  something to compare against.
+* Six screens divided by a total that is zero on a fresh install, and the
+  attendance screen read `records.first` unguarded. `Fmt.share` and explicit
+  empty checks handle those.
+
 ### What works, and what does not
 
 **Data persists.** The app carries its own SQLite database (§2.9). Adding a

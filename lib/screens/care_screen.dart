@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../utils/formatters.dart';
@@ -60,7 +60,6 @@ class CareScreen extends ConsumerWidget {
             StatCard(
               label: 'Open requests',
               value: '$open',
-              delta: -8.5,
               hint: 'awaiting first contact',
               icon: Icons.error_outline,
               invertDelta: true,
@@ -68,21 +67,18 @@ class CareScreen extends ConsumerWidget {
             StatCard(
               label: 'In progress',
               value: '$inProgress',
-              delta: 4.2,
               hint: 'being followed up',
               icon: Icons.schedule,
             ),
             StatCard(
               label: 'Resolved',
               value: '$resolved',
-              delta: 11.7,
               hint: 'closed recently',
               icon: Icons.check_circle_outline,
             ),
             StatCard(
               label: 'Unassigned',
               value: '$unassigned',
-              delta: -20,
               hint: 'need a pastor allocated',
               icon: Icons.person_search_outlined,
               invertDelta: true,
@@ -158,7 +154,7 @@ class CareScreen extends ConsumerWidget {
                   hideOnNarrow: true,
                   sortValue: (c) => c.createdAt,
                   cell: (c) => Text(
-                    Fmt.relative(c.createdAt, kDemoNow),
+                    Fmt.relative(c.createdAt, appNow()),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),

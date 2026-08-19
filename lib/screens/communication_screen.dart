@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -64,28 +64,24 @@ class CommunicationScreen extends ConsumerWidget {
             StatCard(
               label: 'Messages sent',
               value: '${sent.length}',
-              delta: 16.7,
               hint: 'in the last 7 days',
               icon: Icons.send_outlined,
             ),
             StatCard(
               label: 'People reached',
               value: Fmt.number(reached),
-              delta: 9.4,
               hint: 'across all channels',
               icon: Icons.campaign_outlined,
             ),
             StatCard(
               label: 'Average open rate',
               value: '$avgOpen%',
-              delta: -2.1,
               hint: 'email and SMS combined',
               icon: Icons.drafts_outlined,
             ),
             StatCard(
               label: 'Scheduled',
               value: '$scheduled',
-              delta: 0,
               hint: 'queued to send',
               icon: Icons.schedule_send_outlined,
             ),
@@ -131,7 +127,7 @@ class CommunicationScreen extends ConsumerWidget {
                                       ?.copyWith(fontWeight: FontWeight.w600)),
                               Text(
                                 '${c.audience} · ${Fmt.number(c.recipients)} recipients'
-                                '${c.sentAt != null ? ' · sent ${Fmt.relative(c.sentAt!, kDemoNow)}' : c.scheduledFor != null ? ' · sends ${Fmt.dateTime(c.scheduledFor!)}' : ''}',
+                                '${c.sentAt != null ? ' · sent ${Fmt.relative(c.sentAt!, appNow())}' : c.scheduledFor != null ? ' · sends ${Fmt.dateTime(c.scheduledFor!)}' : ''}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style:
@@ -180,7 +176,7 @@ class CommunicationScreen extends ConsumerWidget {
                                     ?.copyWith(fontWeight: FontWeight.w600)),
                             Text(
                               '${ref.watch(memberNameProvider(a.authorId))} · '
-                              '${Fmt.relative(a.postedAt, kDemoNow)}',
+                              '${Fmt.relative(a.postedAt, appNow())}',
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ],

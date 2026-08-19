@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:go_router/go_router.dart';
 
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
@@ -84,28 +84,24 @@ class MembersScreen extends ConsumerWidget {
             StatCard(
               label: 'Total on file',
               value: Fmt.number(members.length),
-              delta: 4.8,
               hint: 'all statuses',
               icon: Icons.people_outline,
             ),
             StatCard(
               label: 'Active members',
               value: Fmt.number(active),
-              delta: 3.1,
-              hint: '${(active / members.length * 100).round()}% of directory',
+              hint: '${Fmt.share(active, members.length)} of directory',
               icon: Icons.verified_outlined,
             ),
             StatCard(
               label: 'Visitors to follow up',
               value: Fmt.number(visitors),
-              delta: 12.4,
               hint: 'awaiting contact',
               icon: Icons.person_add_outlined,
             ),
             StatCard(
               label: 'Families registered',
               value: Fmt.number(families.length),
-              delta: 0,
               hint: '${Fmt.number(baptised)} baptised members',
               icon: Icons.family_restroom_outlined,
             ),
@@ -185,8 +181,8 @@ class MembersScreen extends ConsumerWidget {
                 header: 'Age',
                 width: 60,
                 hideOnNarrow: true,
-                sortValue: (m) => m.ageAt(kDemoNow),
-                cell: (m) => Text('${m.ageAt(kDemoNow)}',
+                sortValue: (m) => m.ageAt(appNow()),
+                cell: (m) => Text('${m.ageAt(appNow())}',
                     style: Theme.of(context).textTheme.bodySmall),
               ),
               TableColumn<Member>(

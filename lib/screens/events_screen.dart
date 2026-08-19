@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
 import '../config/app_config.dart';
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -49,28 +49,24 @@ class EventsScreen extends ConsumerWidget {
             StatCard(
               label: 'Upcoming events',
               value: '${upcoming.length}',
-              delta: 8.3,
               hint: 'in the next 35 days',
               icon: Icons.calendar_month_outlined,
             ),
             StatCard(
               label: 'Registrations',
               value: Fmt.number(registered),
-              delta: 11.2,
-              hint: '${(registered / expected * 100).round()}% of expected',
+              hint: '${Fmt.share(registered, expected)} of expected',
               icon: Icons.people_outline,
             ),
             StatCard(
               label: 'Recurring services',
               value: '$recurring',
-              delta: 0,
               hint: 'repeat weekly',
               icon: Icons.repeat,
             ),
             StatCard(
               label: 'Weekly services',
               value: '${ChurchConfig.services.length}',
-              delta: 0,
               hint: 'on the standing schedule',
               icon: Icons.event_repeat_outlined,
             ),
@@ -266,7 +262,7 @@ class EventsScreen extends ConsumerWidget {
                         const SizedBox(height: 4),
                         Text(
                           '${ref.watch(memberNameProvider(a.authorId))} · '
-                          '${Fmt.relative(a.postedAt, kDemoNow)}',
+                          '${Fmt.relative(a.postedAt, appNow())}',
                           style: Theme.of(context)
                               .textTheme
                               .labelSmall

@@ -60,15 +60,13 @@ class VolunteersScreen extends ConsumerWidget {
           children: [
             StatCard(
               label: 'Rota coverage',
-              value: '${(filled / slots.length * 100).round()}%',
-              delta: 3.6,
+              value: Fmt.share(filled, slots.length),
               hint: '$filled of ${slots.length} slots',
               icon: Icons.how_to_reg_outlined,
             ),
             StatCard(
               label: 'Open slots',
               value: '$open',
-              delta: -14.3,
               hint: 'need a volunteer',
               icon: Icons.error_outline,
               invertDelta: true,
@@ -76,7 +74,6 @@ class VolunteersScreen extends ConsumerWidget {
             StatCard(
               label: 'Declined',
               value: '$declined',
-              delta: 0,
               hint: 'volunteer unavailable',
               icon: Icons.person_off_outlined,
               invertDelta: true,
@@ -84,7 +81,6 @@ class VolunteersScreen extends ConsumerWidget {
             StatCard(
               label: 'Serving roles',
               value: '${roleCoverage.length}',
-              delta: 0,
               hint: 'across every service',
               icon: Icons.assignment_outlined,
             ),

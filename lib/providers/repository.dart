@@ -113,6 +113,20 @@ final branchNameProvider = Provider.family<String, String?>((ref, id) {
   return ref.watch(branchByIdProvider(id))?.name ?? 'Unknown branch';
 });
 
+/// Short code for a branch id; "ALL" when null.
+final branchCodeProvider = Provider.family<String, String?>((ref, id) {
+  if (id == null) return 'ALL';
+  return ref.watch(branchByIdProvider(id))?.code ?? '—';
+});
+
+/// Display name for a department instance, taken from its catalogue type.
+final departmentNameProvider = Provider.family<String, String>((ref, id) {
+  final department = ref.watch(departmentByIdProvider(id));
+  if (department == null) return 'Unknown department';
+  return ref.watch(departmentTypeByIdProvider(department.typeId))?.name ??
+      'Department';
+});
+
 /* ------------------------------------------------------------------ people */
 
 final membersProvider = Provider<List<Member>>(
@@ -253,7 +267,10 @@ final expensesProvider = Provider<List<ExpenseRecord>>(
 );
 
 final financeTrendProvider = Provider<List<TrendPoint>>(
-  (ref) => fin.financeTrendOf(ref.watch(donationsProvider)),
+  (ref) => fin.financeTrendOf(
+    ref.watch(donationsProvider),
+    expenses: ref.watch(expensesProvider),
+  ),
 );
 final givingByFundProvider = Provider<List<CategoryPoint>>(
   (ref) => fin.givingByFundOf(ref.watch(donationsProvider)),

@@ -32,18 +32,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Widget build(BuildContext context) {
     final records = ref.watch(attendanceRecordsProvider);
     final members = ref.watch(membersProvider);
-    final latest = records.first;
-    final previous = records[1];
-    final delta = (latest.total - previous.total) / previous.total * 100;
 
-    final average =
-        records.fold(0, (sum, r) => sum + r.total) ~/ records.length;
-    final onlineShare = records.fold(0, (sum, r) => sum + r.online) /
-        records.fold(0, (sum, r) => sum + r.total) *
-        100;
+    // A fresh install has no services recorded, so nothing here may assume a
+    // first or second record exists.
+    final latest = records.isEmpty ? null : records.first;
+    final previous = records.length > 1 ? records[1] : null;
+    final delta = (previous == null || previous.total == 0)
+        ? null
+        : (latest!.total - previous.total) / previous.total * 100;
 
-    int avgOf(int Function(AttendanceRecord) pick) =>
-        records.fold(0, (sum, r) => sum + pick(r)) ~/ records.length;
+    final totalAttendance = records.fold(0, (sum, r) => sum + r.total);
+    final average = records.isEmpty ? 0 : totalAttendance ~/ records.length;
+    final totalOnline = records.fold(0, (sum, r) => sum + r.online);
+
+    int avgOf(int Function(AttendanceRecord) pick) => records.isEmpty
+        ? 0
+        : records.fold(0, (sum, r) => sum + pick(r)) ~/ records.length;
 
     final segments = [
       CategoryPoint(label: 'Adults', value: avgOf((r) => r.adults).toDouble()),
@@ -72,29 +76,28 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           children: [
             StatCard(
               label: 'Last service',
-              value: Fmt.number(latest.total),
-              delta: double.parse(delta.toStringAsFixed(1)),
-              hint: latest.serviceName,
+              value: latest == null ? '—' : Fmt.number(latest.total),
+              delta: delta == null
+                  ? null
+                  : double.parse(delta.toStringAsFixed(1)),
+              hint: latest?.serviceName ?? 'no services recorded yet',
               icon: Icons.how_to_reg_outlined,
             ),
             StatCard(
               label: '26-week average',
               value: Fmt.number(average),
-              delta: 2.4,
               hint: 'all services',
               icon: Icons.trending_up,
             ),
             StatCard(
               label: 'Online share',
-              value: '${onlineShare.round()}%',
-              delta: 6.2,
+              value: Fmt.share(totalOnline, totalAttendance),
               hint: 'of total attendance',
               icon: Icons.laptop_outlined,
             ),
             StatCard(
               label: 'Checked in today',
               value: Fmt.number(_checkedIn.length),
-              delta: 0,
               hint: 'of ${members.length} on file',
               icon: Icons.people_outline,
             ),

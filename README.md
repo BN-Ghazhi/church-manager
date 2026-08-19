@@ -1,4 +1,4 @@
-# Church Management System
+# Kingdom Grace Chapel — Management System
 
 A complete management console for a local church — members, attendance, giving,
 events, volunteers, pastoral care, discipleship, assets and communication.
@@ -13,9 +13,12 @@ it's built and what to build next.
 
 ## Context
 
-Configured for a **Ghanaian church**: Ghana cedi (GH₵), headquarters in Accra
-with branches in Tema, Kumasi, Takoradi, Tamale and Cape Coast, Ghanaian names
-and `+233` phone numbers. All of it is data — see "Making it yours" below.
+Built for **Kingdom Grace Chapel (K.G.C.)**, a Ghanaian church, so amounts are
+in Ghana cedi (GH₵) and the default country is Ghana.
+
+**The app ships empty.** A fresh install contains one headquarters branch, one
+administrator account and the department catalogue — nothing else. No demo
+members, giving or attendance to delete first: you enter your own records.
 
 ## Stack
 
@@ -42,17 +45,27 @@ heads and volunteers can never receive it.
 
 ## Signing in
 
-Everyone signs in — the console has real accounts with hashed passwords. On a
-fresh install the seeded demo logins are listed on the sign-in screen:
+First run:
 
-| Email | Role | Sees |
-|---|---|---|
-| `okafor@gracechapel.org` | Super Admin | every branch |
-| `uche@gracechapel.org` | Branch Pastor | Ikeja only |
-| `mensah@gracechapel.org` | HQ Finance | giving, all branches |
-| `youthministry.hq@gracechapel.org` | Department Head | Youth at HQ |
+| | |
+|---|---|
+| Email | `admin@kgc.org` |
+| Password | `church2026` |
 
-Password for all: `church2026`. **Change these before entering real data.**
+**Change that password once you are in.** It is published in this repository, so
+it protects nothing.
+
+Then, in order:
+
+1. **Settings** — your church's address, phone and pastor, and rename the
+   headquarters branch if you want something other than
+   "Kingdom Grace Chapel Headquarters".
+2. **Branches** — add your other campuses.
+3. **Members** — add people. Every member belongs to one branch.
+4. **Departments** — start Youth, Children and the rest at each branch, drawing
+   members from that branch's roll.
+5. **Roles & Access** — create accounts for your pastors and administrators.
+
 
 ## Install it
 

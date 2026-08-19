@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../data/departments_data.dart';
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
@@ -80,28 +79,24 @@ class AccessScreen extends ConsumerWidget {
             StatCard(
               label: 'Users with access',
               value: '${users.length}',
-              delta: 14.3,
               hint: 'staff and volunteers',
               icon: Icons.people_outline,
             ),
             StatCard(
               label: 'Active accounts',
               value: '$active',
-              delta: 0,
               hint: 'signed in recently',
               icon: Icons.verified_user_outlined,
             ),
             StatCard(
               label: 'Church-wide access',
               value: '$multiBranch',
-              delta: 0,
               hint: 'accounts seeing every branch',
               icon: Icons.public,
             ),
             StatCard(
               label: 'Pending invites',
               value: '$invited',
-              delta: 0,
               hint: 'awaiting first sign-in',
               icon: Icons.mark_email_unread_outlined,
             ),
@@ -135,7 +130,7 @@ class AccessScreen extends ConsumerWidget {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          Fmt.relative(u.lastActiveAt, kDemoNow),
+                          Fmt.relative(u.lastActiveAt, appNow()),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ),
@@ -248,19 +243,20 @@ class AccessScreen extends ConsumerWidget {
 }
 
 /// Shows the branch/department a user's authority is limited to.
-class _ScopeChip extends StatelessWidget {
+class _ScopeChip extends ConsumerWidget {
   const _ScopeChip({required this.user});
 
   final StaffUser user;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final label = switch (user.effectiveScope) {
       RoleScope.allBranches => 'All branches',
-      RoleScope.ownBranch => branchName(user.branchId),
+      RoleScope.ownBranch => ref.watch(branchNameProvider(user.branchId)),
       RoleScope.ownDepartment => user.departmentId == null
-          ? branchName(user.branchId)
-          : '${departmentName(user.departmentId!)} · ${branchCode(user.branchId)}',
+          ? ref.watch(branchNameProvider(user.branchId))
+          : '${ref.watch(departmentNameProvider(user.departmentId!))}'
+              ' · ${ref.watch(branchCodeProvider(user.branchId))}',
       RoleScope.self => 'Self only',
     };
 

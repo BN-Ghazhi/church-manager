@@ -1,454 +1,170 @@
 import 'package:drift/drift.dart';
 
-import '../data/departments_data.dart' as seed_dept;
-import '../data/events_data.dart' as seed_ev;
-import '../data/finance_data.dart' as seed_fin;
-import '../data/members_data.dart' as seed_mem;
-import '../data/ministries_data.dart' as seed_min;
-import '../data/operations_data.dart' as seed_ops;
 import '../models/models.dart';
 import 'database.dart';
 import 'password.dart';
 
-/// Populates a brand-new database from the bundled demo dataset.
+/// Prepares a brand-new database.
 ///
 /// Runs once, the first time the app opens a database that does not yet exist.
-/// After this the `lib/data/*` files are no longer read — they exist only as
-/// the seed, and every subsequent read and write goes through SQL.
 ///
-/// The whole thing runs in a single transaction: either the database ends up
-/// fully populated or completely empty, never half-built.
+/// This deliberately creates almost nothing: one administrator account and one
+/// headquarters branch. There is no demo congregation, no sample giving and no
+/// invented attendance — the church enters its own records, and seeded examples
+/// would only have to be found and deleted first.
+///
+/// Two things cannot be omitted:
+///
+///   * **An account**, or there is no way to sign in.
+///   * **A branch**, because every member, gift and service belongs to one, so
+///     the app has nothing to attach a first record to without it.
+///
+/// Both are editable afterwards — rename the branch in Settings, change the
+/// password from the account menu.
+///
+/// The whole thing runs in a single transaction: either it completes or the
+/// database is left untouched, never half-built.
 class Seeder {
   Seeder(this.db);
 
   final AppDatabase db;
 
-  /// Accounts created on first run. Passwords are hashed before storage.
+  /// The first administrator's credentials.
   ///
-  /// These are demo credentials and are deliberately shown on the sign-in
-  /// screen, because there is no other way in on a fresh install. Change them
-  /// (or delete the accounts) before this is used with real congregation data.
-  static const demoPassword = 'church2026';
+  /// Shown on the sign-in screen, because on a fresh install there is no other
+  /// way in. **Change this password before the app holds real records** — it is
+  /// public in the source and therefore not a secret.
+  static const firstAdminEmail = 'admin@kgc.org';
+  static const firstAdminPassword = 'church2026';
+  static const firstAdminName = 'Administrator';
+
+  /// The headquarters branch created on first run, so records have somewhere to
+  /// go. Rename it in Settings.
+  static const headquartersName = 'Kingdom Grace Chapel Headquarters';
+  static const headquartersCode = 'HQ';
 
   Future<void> seedFirstRun() async {
     await db.transaction(() async {
-      await _seedBranches();
-      await _seedMembers();
-      await _seedDepartmentTypes();
-      await _seedDepartments();
-      await _seedAccounts();
-      await _seedAttendance();
-      await _seedFinance();
-      await _seedOperations();
+      final branchId = await _seedHeadquarters();
+      await _seedFirstAdmin(branchId);
+      await _seedDepartmentCatalogue();
       await _seedSettings();
     });
   }
 
-  Future<void> _seedBranches() async {
-    await db.batch((b) {
-      b.insertAll(db.branches, [
-        for (final branch in seed_dept.branches)
-          BranchesCompanion.insert(
-            id: branch.id,
-            name: branch.name,
-            code: branch.code,
-            addressLine: branch.address.line1,
-            city: branch.address.city,
-            state: branch.address.state,
-            country: Value(branch.address.country),
-            status: branch.status.name,
-            establishedAt: branch.establishedAt,
-            // Pastors are members, so they are attached after members exist.
-            pastorId: const Value(null),
-            assistantPastorId: const Value(null),
-            accent: branch.accent.name,
-            isHeadquarters: Value(branch.isHeadquarters),
-          ),
-      ]);
-    });
+  /// The one branch a fresh install needs.
+  Future<String> _seedHeadquarters() async {
+    const id = 'brn-0001';
+    await db.into(db.branches).insert(BranchesCompanion.insert(
+          id: id,
+          name: headquartersName,
+          code: headquartersCode,
+          addressLine: '',
+          city: '',
+          state: '',
+          status: BranchStatus.active.name,
+          establishedAt: DateTime.now().toUtc(),
+          accent: AccentToken.blue.name,
+          isHeadquarters: const Value(true),
+        ));
+    return id;
   }
 
-  Future<void> _seedMembers() async {
-    await db.batch((b) {
-      b.insertAll(db.members, [
-        for (final m in seed_mem.members)
-          MembersCompanion.insert(
-            id: m.id,
-            firstName: m.firstName,
-            lastName: m.lastName,
-            email: Value(m.email),
-            phone: Value(m.phone),
-            gender: m.gender.name,
-            dateOfBirth: m.dateOfBirth,
-            maritalStatus: m.maritalStatus.name,
-            status: m.status.name,
-            joinedAt: m.joinedAt,
-            addressLine: Value(m.address.line1),
-            city: Value(m.address.city),
-            state: Value(m.address.state),
-            country: Value(m.address.country),
-            isBaptized: Value(m.isBaptized),
-            branchId: m.branchId,
-            groupId: Value(m.groupId),
-            familyId: Value(m.familyId),
-            notes: Value(m.notes),
-            tags: Value(m.tags.join('|')),
-          ),
-      ]);
-    });
-
-    // Now that members exist, attach each branch's pastor and assistant.
-    for (final branch in seed_dept.branches) {
-      await (db.update(db.branches)..where((t) => t.id.equals(branch.id)))
-          .write(BranchesCompanion(
-        pastorId: Value(branch.pastorId),
-        assistantPastorId: Value(branch.assistantPastorId),
-      ));
-    }
+  /// The administrator who sets everything else up.
+  ///
+  /// Given cross-branch visibility explicitly rather than relying on the role
+  /// default, so the grant is visible in the database from the outset.
+  Future<void> _seedFirstAdmin(String branchId) async {
+    final salt = Password.generateSalt();
+    await db.into(db.userAccounts).insert(UserAccountsCompanion.insert(
+          id: 'usr-0001',
+          name: firstAdminName,
+          email: firstAdminEmail.toLowerCase(),
+          passwordHash: Password.hash(firstAdminPassword, salt),
+          passwordSalt: salt,
+          role: UserRole.superAdmin.name,
+          status: AccountStatus.active.name,
+          branchId: Value(branchId),
+          canSeeAllBranches: const Value(true),
+          lastActiveAt: Value(DateTime.now().toUtc()),
+        ));
   }
 
-  Future<void> _seedDepartmentTypes() async {
-    await db.batch((b) {
-      b.insertAll(db.departmentTypes, [
-        for (final t in seed_dept.departmentTypes)
-          DepartmentTypesCompanion.insert(
-            id: t.id,
-            name: t.name,
-            description: Value(t.description),
-            icon: Value(t.icon),
-            accent: t.accent.name,
-            isCore: Value(t.isCore),
-            minAge: Value(t.ageRange?.min),
-            maxAge: Value(t.ageRange?.max),
-          ),
-      ]);
-    });
-  }
+  /// The shared department catalogue.
+  ///
+  /// Kept because it is structure rather than data: it defines what a Youth or
+  /// Children's department *is*, so the same department stays comparable between
+  /// branches. No department instances are created — the church starts those
+  /// where it wants them. Types can be edited, added to, or ignored.
+  Future<void> _seedDepartmentCatalogue() async {
+    const catalogue = <(String, String, String, String, AccentToken, bool, int?, int?)>[
+      ('dpt-youth', 'Youth Ministry',
+        'Teenagers and young adults — fellowship, mentoring and outreach.',
+        'youth', AccentToken.violet, true, 13, 30),
+      ('dpt-children', "Children's Department",
+        'Age-graded Sunday school, holiday clubs and child safeguarding.',
+        'children', AccentToken.amber, true, 0, 12),
+      ('dpt-worship', 'Worship & Choir',
+        'Leads congregational worship and midweek rehearsals.',
+        'worship', AccentToken.rose, true, null, null),
+      ('dpt-ushering', 'Ushering & Protocol',
+        'Welcomes and seats the congregation; manages offering flow.',
+        'ushering', AccentToken.blue, true, null, null),
+      ('dpt-media', 'Media & Technical',
+        'Livestream, sound, lighting, slides and recordings.',
+        'media', AccentToken.cyan, false, null, null),
+      ('dpt-evangelism', 'Evangelism & Outreach',
+        'Community outreach and follow-up of new converts.',
+        'evangelism', AccentToken.emerald, false, null, null),
+      ('dpt-prayer', 'Prayer & Intercession',
+        'Early morning prayer, vigils and intercession.',
+        'prayer', AccentToken.violet, false, null, null),
+      ('dpt-welfare', 'Welfare & Benevolence',
+        'Practical support for members in need.',
+        'welfare', AccentToken.amber, false, null, null),
+    ];
 
-  Future<void> _seedDepartments() async {
-    await db.batch((b) {
-      b.insertAll(db.departments, [
-        for (final d in seed_dept.departments)
-          DepartmentsCompanion.insert(
-            id: d.id,
-            typeId: d.typeId,
-            branchId: d.branchId,
-            headId: Value(d.headId),
-            assistantHeadId: Value(d.assistantHeadId),
-            meetingDay: d.meetingDay.name,
-            meetingTime: d.meetingTime,
-          ),
-      ]);
-
-      b.insertAll(db.departmentMembers, [
-        for (final d in seed_dept.departments)
-          for (final memberId in d.memberIds)
-            DepartmentMembersCompanion.insert(
-              departmentId: d.id,
-              memberId: memberId,
+    for (final (id, name, description, icon, accent, isCore, minAge, maxAge)
+        in catalogue) {
+      await db.into(db.departmentTypes).insert(
+            DepartmentTypesCompanion.insert(
+              id: id,
+              name: name,
+              description: Value(description),
+              icon: Value(icon),
+              accent: accent.name,
+              isCore: Value(isCore),
+              minAge: Value(minAge),
+              maxAge: Value(maxAge),
             ),
-      ]);
-    });
-  }
-
-  /// Creates one sign-in account per seeded staff role, including a department
-  /// head at each core department so the per-department login can be tried.
-  Future<void> _seedAccounts() async {
-    final rows = <UserAccountsCompanion>[];
-
-    void add({
-      required String id,
-      required String name,
-      required String email,
-      required UserRole role,
-      String? branchId,
-      String? departmentId,
-      String? memberId,
-      AccountStatus status = AccountStatus.active,
-      bool? canSeeAllBranches,
-    }) {
-      final salt = Password.generateSalt();
-      rows.add(UserAccountsCompanion.insert(
-        id: id,
-        name: name,
-        email: email.toLowerCase(),
-        passwordHash: Password.hash(demoPassword, salt),
-        passwordSalt: salt,
-        role: role.name,
-        status: status.name,
-        branchId: Value(branchId),
-        departmentId: Value(departmentId),
-        memberId: Value(memberId),
-        canSeeAllBranches: Value(canSeeAllBranches),
-        lastActiveAt: Value(DateTime.now().toUtc()),
-      ));
+          );
     }
-
-    // Church-wide and branch staff, from the existing seed list.
-    //
-    // Nobody is granted cross-branch sight here: Super Admin gets it from the
-    // role default, and everyone else starts confined to their own branch. The
-    // demo therefore shows the restriction working rather than assuming it away.
-    for (final user in seed_ops.staffUsers) {
-      add(
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        branchId: user.branchId ?? seed_dept.branches.first.id,
-        departmentId: user.departmentId,
-        status: user.status,
-      );
-    }
-
-    // A department head account for every department, so each one has a real
-    // login that lands on its own department.
-    var index = 0;
-    for (final department in seed_dept.departments) {
-      final head = seed_mem.memberById(department.headId);
-      if (head == null) continue;
-
-      final type = seed_dept.departmentTypeById(department.typeId);
-      final branch = seed_dept.branchById(department.branchId);
-      final slug = (type?.name ?? 'dept')
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9]+'), '');
-      final email = '$slug.${branch?.code.toLowerCase() ?? 'br'}@gracechapel.org';
-
-      // Skip if this member already has an account from the staff list.
-      if (rows.any((r) => r.email.value == email)) continue;
-
-      add(
-        id: 'usr-dept-${index.toString().padLeft(4, '0')}',
-        name: head.fullName,
-        email: email,
-        role: UserRole.departmentHead,
-        branchId: department.branchId,
-        departmentId: department.id,
-        memberId: head.id,
-      );
-      index++;
-    }
-
-    await db.batch((b) => b.insertAll(db.userAccounts, rows));
   }
 
-  Future<void> _seedAttendance() async {
-    await db.batch((b) {
-      b.insertAll(db.attendanceRecords, [
-        for (final r in seed_ev.attendanceRecords)
-          AttendanceRecordsCompanion.insert(
-            id: r.id,
-            branchId: r.branchId,
-            date: r.date,
-            serviceName: r.serviceName,
-            adults: Value(r.adults),
-            children: Value(r.children),
-            visitors: Value(r.visitors),
-            online: Value(r.online),
-          ),
-      ]);
-
-      b.insertAll(db.events, [
-        for (final e in seed_ev.events)
-          EventsCompanion.insert(
-            id: e.id,
-            branchId: e.branchId,
-            title: e.title,
-            description: Value(e.description),
-            category: e.category.name,
-            startsAt: e.startsAt,
-            endsAt: e.endsAt,
-            location: Value(e.location),
-            organizerId: Value(e.organizerId),
-            expectedAttendance: Value(e.expectedAttendance),
-            registeredCount: Value(e.registeredCount),
-            isRecurring: Value(e.isRecurring),
-          ),
-      ]);
-
-      b.insertAll(db.announcements, [
-        for (final a in seed_ev.announcements)
-          AnnouncementsCompanion.insert(
-            id: a.id,
-            branchId: a.branchId,
-            title: a.title,
-            body: a.body,
-            authorId: Value(a.authorId),
-            postedAt: a.postedAt,
-            pinned: Value(a.pinned),
-          ),
-      ]);
-    });
-  }
-
-  Future<void> _seedFinance() async {
-    await db.batch((b) {
-      b.insertAll(db.donations, [
-        for (final d in seed_fin.donations)
-          DonationsCompanion.insert(
-            id: d.id,
-            branchId: d.branchId,
-            memberId: Value(d.memberId),
-            donorName: d.donorName,
-            amount: d.amount,
-            fund: d.fund.name,
-            method: d.method.name,
-            date: d.date,
-            reference: d.reference,
-            isRecurring: Value(d.isRecurring),
-          ),
-      ]);
-
-      b.insertAll(db.expenses, [
-        for (final e in seed_fin.expenses)
-          ExpensesCompanion.insert(
-            id: e.id,
-            branchId: e.branchId,
-            category: e.category,
-            vendor: e.vendor,
-            amount: e.amount,
-            date: e.date,
-            approvedBy: Value(e.approvedBy),
-            status: e.status.name,
-          ),
-      ]);
-
-      b.insertAll(db.pledges, [
-        for (final p in seed_fin.pledges)
-          PledgesCompanion.insert(
-            id: p.id,
-            // Pledges follow the member's branch.
-            branchId: seed_mem.memberById(p.memberId)?.branchId ??
-                seed_dept.branches.first.id,
-            memberId: p.memberId,
-            campaign: p.campaign,
-            pledged: p.pledged,
-            fulfilled: Value(p.fulfilled),
-            dueDate: p.dueDate,
-          ),
-      ]);
-    });
-  }
-
-  Future<void> _seedOperations() async {
-    await db.batch((b) {
-      b.insertAll(db.careRequests, [
-        for (final c in seed_ops.careRequests)
-          CareRequestsCompanion.insert(
-            id: c.id,
-            branchId: c.branchId,
-            memberId: c.memberId,
-            type: c.type.name,
-            summary: c.summary,
-            status: c.status.name,
-            priority: c.priority.name,
-            assignedToId: Value(c.assignedToId),
-            createdAt: Value(c.createdAt),
-          ),
-      ]);
-
-      b.insertAll(db.assets, [
-        for (final a in seed_ops.assets)
-          AssetsCompanion.insert(
-            id: a.id,
-            branchId: a.branchId,
-            name: a.name,
-            category: a.category,
-            serial: Value(a.serial),
-            condition: a.condition.name,
-            location: Value(a.location),
-            purchasedAt: a.purchasedAt,
-            value: Value(a.value),
-          ),
-      ]);
-
-      b.insertAll(db.campaigns, [
-        for (final c in seed_ops.campaigns)
-          CampaignsCompanion.insert(
-            id: c.id,
-            branchId: c.branchId,
-            subject: c.subject,
-            channel: c.channel.name,
-            status: c.status.name,
-            audience: c.audience,
-            recipients: Value(c.recipients),
-            openRate: Value(c.openRate),
-            sentAt: Value(c.sentAt),
-            scheduledFor: Value(c.scheduledFor),
-          ),
-      ]);
-
-      b.insertAll(db.volunteerSlots, [
-        for (final s in seed_min.volunteerSlots)
-          VolunteerSlotsCompanion.insert(
-            id: s.id,
-            branchId: s.branchId,
-            date: s.date,
-            serviceName: s.serviceName,
-            role: s.role.name,
-            memberId: Value(s.memberId),
-            status: s.status.name,
-          ),
-      ]);
-
-      b.insertAll(db.courses, [
-        for (final c in seed_min.courses)
-          CoursesCompanion.insert(
-            id: c.id,
-            branchId: c.branchId,
-            name: c.name,
-            description: Value(c.description),
-            lessons: Value(c.lessons),
-            enrolled: Value(c.enrolled),
-            completed: Value(c.completed),
-            facilitatorId: Value(c.facilitatorId),
-          ),
-      ]);
-
-      b.insertAll(db.smallGroups, [
-        for (final g in seed_min.smallGroups)
-          SmallGroupsCompanion.insert(
-            id: g.id,
-            branchId: g.branchId,
-            name: g.name,
-            leaderId: Value(g.leaderId),
-            location: Value(g.location),
-            meetingDay: g.meetingDay.name,
-            meetingTime: g.meetingTime,
-            capacity: Value(g.capacity),
-          ),
-      ]);
-    });
-  }
-
+  /// Church profile defaults, all editable in Settings.
   Future<void> _seedSettings() async {
-    const defaults = <String, String>{
-      'church.name': 'Grace Chapel',
-      'church.legalName': 'Grace Chapel International Ministries',
-      'church.email': 'office@gracechapel.org',
-      'church.phone': '+233 24 123 4567',
-      'church.website': 'gracechapel.org',
-      'church.pastor': 'Pastor Samuel Mensah',
-      'church.founded': '2004',
+    const settings = <String, String>{
+      'church.name': 'Kingdom Grace Chapel',
+      'church.shortName': 'K.G.C.',
+      'church.legalName': 'Kingdom Grace Chapel',
+      'church.email': '',
+      'church.phone': '',
+      'church.website': '',
+      'church.address': '',
+      'church.city': '',
+      'church.state': '',
+      'church.country': 'Ghana',
+      'church.pastor': '',
+      'church.founded': '',
       'church.currency': 'GHS',
       'church.timezone': 'Africa/Accra',
-      'pref.first-timer': 'true',
-      'pref.birthday': 'true',
-      'pref.inactive': 'true',
-      'pref.receipts': 'true',
-      'pref.rota': 'true',
-      'pref.hide-giving': 'true',
-      'pref.directory': 'false',
-      'pref.digest': 'false',
-      'seed.version': '1',
     };
 
-    await db.batch((b) {
-      b.insertAll(db.settings, [
-        for (final entry in defaults.entries)
-          SettingsCompanion.insert(key: entry.key, value: entry.value),
-      ]);
-    });
+    for (final entry in settings.entries) {
+      await db.into(db.settings).insert(SettingsCompanion.insert(
+            key: entry.key,
+            value: entry.value,
+          ));
+    }
   }
 }

@@ -915,9 +915,9 @@ class KpiStat {
     required this.id,
     required this.label,
     required this.value,
-    required this.delta,
     required this.hint,
-    required this.spark,
+    this.delta,
+    this.spark = const [],
     this.invertDelta = false,
   });
 
@@ -925,8 +925,10 @@ class KpiStat {
   final String label;
   final String value;
 
-  /// Percentage change against the previous period; negative means a decline.
-  final double delta;
+  /// Percentage change against the previous period. Null when there is no
+  /// history to compare against, which is the case on a fresh install — the
+  /// tile then shows the figure without a trend rather than inventing one.
+  final double? delta;
   final String hint;
   final List<double> spark;
 

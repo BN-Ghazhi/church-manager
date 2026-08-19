@@ -6,33 +6,31 @@
 class ChurchConfig {
   const ChurchConfig._();
 
-  static const name = 'Grace Chapel';
+  static const name = 'Kingdom Grace Chapel';
+  static const shortName = 'K.G.C.';
   static const tagline = 'Management Console';
-  static const legalName = 'Grace Chapel International Ministries';
-  static const email = 'office@gracechapel.org';
-  static const phone = '+233 24 123 4567';
-  static const website = 'gracechapel.org';
-  static const addressLine = '14 Ring Road Central, Adabraka';
-  static const city = 'Accra';
-  static const state = 'Greater Accra';
+  static const legalName = 'Kingdom Grace Chapel';
+  static const email = '';
+  static const phone = '';
+  static const website = '';
+  static const addressLine = '';
+  static const city = '';
+  static const state = '';
   static const country = 'Ghana';
-  static const pastor = 'Pastor Samuel Mensah';
-  static const founded = '2004';
+  static const pastor = '';
+  static const founded = '';
   static const currency = 'GHS';
   static const timezone = 'Africa/Accra';
 
   /// Stand-in for the authenticated session until auth is wired up.
-  static const currentUserName = 'Grace Ansah';
-  static const currentUserInitials = 'GA';
-  static const currentUserEmail = 'ansah@gracechapel.org';
+  static const currentUserName = 'Administrator';
+  static const currentUserInitials = 'A';
+  static const currentUserEmail = 'admin@kgc.org';
   static const currentUserRole = 'Administrator';
 
-  static const services = <ServiceSlot>[
-    ServiceSlot('First Service', 'Sunday', '7:00 AM', 'Main Auditorium'),
-    ServiceSlot('Second Service', 'Sunday', '10:00 AM', 'Main Auditorium'),
-    ServiceSlot('Bible Study', 'Wednesday', '6:00 PM', 'Main Auditorium'),
-    ServiceSlot('Prayer Meeting', 'Tuesday', '5:00 AM', 'Prayer Chapel'),
-  ];
+  /// Standing weekly services. Empty until the church adds its own in
+  /// Settings — inventing a schedule would only have to be deleted.
+  static const services = <ServiceSlot>[];
 }
 
 class ServiceSlot {

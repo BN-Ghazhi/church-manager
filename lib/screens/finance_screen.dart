@@ -56,14 +56,12 @@ class FinanceScreen extends ConsumerWidget {
             StatCard(
               label: 'Total giving',
               value: Fmt.compactCurrency(income),
-              delta: 6.4,
               hint: 'last 120 days',
               icon: Icons.payments_outlined,
             ),
             StatCard(
               label: 'Expenditure',
               value: Fmt.compactCurrency(outgoings),
-              delta: 2.8,
               hint: '$pending awaiting approval',
               icon: Icons.receipt_long_outlined,
               invertDelta: true,
@@ -71,14 +69,12 @@ class FinanceScreen extends ConsumerWidget {
             StatCard(
               label: 'Net position',
               value: Fmt.compactCurrency(income - outgoings),
-              delta: 9.1,
               hint: 'income less paid expenses',
               icon: Icons.account_balance_outlined,
             ),
             StatCard(
               label: 'Pledges fulfilled',
-              value: '${(fulfilled / pledged * 100).round()}%',
-              delta: 4.2,
+              value: Fmt.share(fulfilled, pledged),
               hint:
                   '${Fmt.compactCurrency(fulfilled)} of ${Fmt.compactCurrency(pledged)}',
               icon: Icons.flag_outlined,

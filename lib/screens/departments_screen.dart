@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
@@ -75,21 +75,18 @@ class DepartmentsScreen extends ConsumerWidget {
             StatCard(
               label: 'Departments running',
               value: '${departments.length}',
-              delta: 6.2,
               hint: consolidated ? 'across branches in view' : 'at this branch',
               icon: Icons.groups_outlined,
             ),
             StatCard(
               label: 'People serving',
               value: Fmt.number(serving),
-              delta: 8.4,
               hint: 'department members',
               icon: Icons.people_outline,
             ),
             StatCard(
               label: 'Types in the catalogue',
               value: '${types.length}',
-              delta: 0,
               hint: '$typesRunning in use here',
               icon: Icons.category_outlined,
             ),
@@ -98,7 +95,6 @@ class DepartmentsScreen extends ConsumerWidget {
               value: departments.isEmpty
                   ? '—'
                   : Fmt.number(serving ~/ departments.length),
-              delta: 0,
               hint: 'members per department',
               icon: Icons.equalizer,
             ),
@@ -332,6 +328,6 @@ class _DepartmentCard extends ConsumerWidget {
 /// Age eligibility helper shared with the member picker.
 bool isEligibleFor(Member member, DepartmentType type) {
   if (type.ageRange == null) return true;
-  final age = member.ageAt(kDemoNow);
+  final age = member.ageAt(appNow());
   return age >= type.ageRange!.min && age <= type.ageRange!.max;
 }

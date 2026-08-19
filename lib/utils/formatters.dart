@@ -39,6 +39,13 @@ class Fmt {
     return number(value);
   }
 
+  /// A share of a total, as a whole percentage.
+  ///
+  /// Returns "—" when the total is zero rather than NaN, which is what a fresh
+  /// install would otherwise show everywhere.
+  static String share(num part, num total) =>
+      total == 0 ? '—' : '${(part / total * 100).round()}%';
+
   static String percent(double value, {int digits = 1}) =>
       '${value > 0 ? '+' : ''}${value.toStringAsFixed(digits)}%';
 

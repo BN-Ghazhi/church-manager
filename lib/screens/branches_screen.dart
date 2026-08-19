@@ -62,28 +62,24 @@ class BranchesScreen extends ConsumerWidget {
             StatCard(
               label: 'Branches in view',
               value: '${branches.length}',
-              delta: 0,
               hint: '$planting church plant${planting == 1 ? '' : 's'}',
               icon: Icons.account_tree_outlined,
             ),
             StatCard(
               label: 'Members across branches',
               value: Fmt.number(members.length),
-              delta: 4.8,
               hint: 'all statuses',
               icon: Icons.people_outline,
             ),
             StatCard(
               label: 'Departments running',
               value: '${departments.length}',
-              delta: 6.2,
               hint: 'across every branch',
               icon: Icons.groups_outlined,
             ),
             StatCard(
               label: 'Last Sunday, all branches',
               value: Fmt.number(_latestTotal(attendance)),
-              delta: 2.4,
               hint: 'combined attendance',
               icon: Icons.how_to_reg_outlined,
             ),

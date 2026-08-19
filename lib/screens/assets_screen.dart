@@ -56,21 +56,18 @@ class AssetsScreen extends ConsumerWidget {
             StatCard(
               label: 'Assets tracked',
               value: Fmt.number(assets.length),
-              delta: 7.7,
               hint: 'items on the register',
               icon: Icons.inventory_2_outlined,
             ),
             StatCard(
               label: 'Total value',
               value: Fmt.compactCurrency(totalValue),
-              delta: 3.2,
               hint: 'at purchase cost',
               icon: Icons.account_balance_wallet_outlined,
             ),
             StatCard(
               label: 'Needs repair',
               value: '$needsRepair',
-              delta: -25,
               hint: 'flagged for maintenance',
               icon: Icons.build_outlined,
               invertDelta: true,
@@ -78,7 +75,6 @@ class AssetsScreen extends ConsumerWidget {
             StatCard(
               label: 'Categories',
               value: '${categories.length}',
-              delta: 0,
               hint: 'from audio to vehicles',
               icon: Icons.category_outlined,
             ),

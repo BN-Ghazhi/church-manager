@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:go_router/go_router.dart';
 
-import '../data/seed.dart';
+import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -160,7 +160,7 @@ class MemberDetailScreen extends ConsumerWidget {
                       context,
                       Icons.cake_outlined,
                       'Date of birth',
-                      '${Fmt.date(member.dateOfBirth)} · ${member.ageAt(kDemoNow)} yrs',
+                      '${Fmt.date(member.dateOfBirth)} · ${member.ageAt(appNow())} yrs',
                     ),
                     _detail(context, Icons.place_outlined, 'Address',
                         member.address.full),
@@ -431,7 +431,7 @@ class _CareTab extends ConsumerWidget {
                         Text(r.summary,
                             style: Theme.of(context).textTheme.bodySmall),
                         Text(
-                          'Raised ${Fmt.relative(r.createdAt, kDemoNow)} · '
+                          'Raised ${Fmt.relative(r.createdAt, appNow())} · '
                           'assigned to ${ref.watch(memberNameProvider(r.assignedToId))}',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 color:

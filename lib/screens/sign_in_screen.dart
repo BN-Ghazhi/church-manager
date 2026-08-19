@@ -209,7 +209,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
 
                 const SizedBox(height: AppSpacing.md),
-                const _DemoCredentials(),
+                const _FirstSignIn(),
               ],
             ),
           ),
@@ -218,99 +218,76 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     );
   }
 }
-
-/// Shows the seeded logins.
+/// The first-run credentials, shown because on a fresh install there is no
+/// other way in.
 ///
-/// A fresh install has no other way in, so hiding these would lock the user out
-/// of their own app. They are labelled plainly as demo credentials that must be
-/// changed before real congregation data goes in.
-class _DemoCredentials extends ConsumerWidget {
-  const _DemoCredentials();
-
-  static const _accounts = [
-    ('ansah@gracechapel.org', 'Super Admin', 'sees every branch'),
-    ('osei@gracechapel.org', 'Branch Pastor', 'Tema only'),
-    ('boateng@gracechapel.org', 'HQ Finance', 'its own branch only'),
-    ('youthministry.hq@gracechapel.org', 'Department Head', 'Youth at HQ'),
-  ];
+/// Deliberately blunt about the password being public in the source: it is a
+/// starting point, not a secret, and must be changed before the app holds real
+/// congregation records.
+class _FirstSignIn extends StatelessWidget {
+  const _FirstSignIn();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return ExpansionTile(
-      tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      collapsedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      leading: Icon(Icons.key_outlined, size: 18, color: scheme.onSurfaceVariant),
-      title: Text(
-        'Demo sign-ins',
-        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(
-        'Change these before using real data',
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: scheme.onSurfaceVariant),
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    Widget row(String label, String value) => Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Row(
             children: [
-              for (final (email, role, scope) in _accounts)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SelectableText(
-                              email,
-                              style: theme.textTheme.labelSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              '$role · $scope',
-                              style: theme.textTheme.labelSmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+              SizedBox(
+                width: 74,
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
-              const Divider(),
-              Row(
-                children: [
-                  Text(
-                    'Password for all: ',
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  SelectableText(
-                    Seeder.demoPassword,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ],
+              ),
+              SelectableText(
+                value,
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),
-        ),
-      ],
+        );
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppTheme.info.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppTheme.info.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.vpn_key_outlined, size: 16, color: AppTheme.info),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'First sign-in',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm + 2),
+          row('Email', Seeder.firstAdminEmail),
+          row('Password', Seeder.firstAdminPassword),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Change this password once you are in — it is published in the '
+            'source code, so it protects nothing.',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
