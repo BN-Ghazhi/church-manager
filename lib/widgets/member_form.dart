@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../config/ghana.dart';
 import '../models/models.dart';
+import 'form_scaffold.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
 import '../theme/app_theme.dart';
@@ -30,6 +32,7 @@ class _MemberFormDialog extends ConsumerStatefulWidget {
 
 class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
   final _formKey = GlobalKey<FormState>();
+  String? _region;
   late final TextEditingController _first;
   late final TextEditingController _last;
   late final TextEditingController _email;
@@ -51,6 +54,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
   @override
   void initState() {
     super.initState();
+    _region = widget.member?.address.state;
     final m = widget.member;
     _first = TextEditingController(text: m?.firstName ?? '');
     _last = TextEditingController(text: m?.lastName ?? '');
@@ -97,7 +101,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           firstName: _first.text.trim(),
           lastName: _last.text.trim(),
           email: _email.text.trim(),
-          phone: _phone.text.trim(),
+          phone: Ghana.formatPhone(_phone.text),
           branchId: branchId,
           gender: _gender,
           dateOfBirth: _dateOfBirth,
@@ -106,6 +110,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           isBaptized: _baptised,
           addressLine: _address.text.trim(),
           city: _city.text.trim(),
+          state: _region ?? '',
           notes: _notes.text.trim(),
         );
       } else {
@@ -119,9 +124,10 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           status: _status,
           isBaptized: _baptised,
           email: _email.text.trim(),
-          phone: _phone.text.trim(),
+          phone: Ghana.formatPhone(_phone.text),
           addressLine: _address.text.trim(),
           city: _city.text.trim(),
+          state: _region ?? '',
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         );
       }
@@ -283,11 +289,25 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                       ),
                     ),
                     _field(
-                      'City',
+                      'City or town',
                       TextFormField(
                         controller: _city,
                         decoration: const InputDecoration(hintText: 'Accra'),
+                        // Fills the region from a recognised city, unless one
+                        // has already been chosen.
+                        onChanged: (value) {
+                          if (_region != null && _region!.isNotEmpty) return;
+                          final inferred = Ghana.regionForCity(value);
+                          if (inferred != null) {
+                            setState(() => _region = inferred);
+                          }
+                        },
                       ),
+                    ),
+                    RegionField(
+                      value: _region,
+                      required: false,
+                      onChanged: (v) => setState(() => _region = v),
                     ),
                   ],
                 ),

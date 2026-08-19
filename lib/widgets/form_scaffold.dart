@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../config/ghana.dart';
 import '../models/models.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
@@ -292,6 +293,88 @@ class MemberField extends ConsumerWidget {
         validator: required && branchId != null
             ? (v) => v == null ? 'Choose a $label'.toLowerCase() : null
             : null,
+      ),
+    );
+  }
+}
+
+/// Region picker for Ghanaian addresses.
+///
+/// Ghana has sixteen regions, not states, so this is a fixed list rather than a
+/// text field — free typing produces "Gt. Accra", "greater accra" and
+/// "Accra Region" for the same place, which then breaks any grouping by region.
+class RegionField extends StatelessWidget {
+  const RegionField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.required = true,
+  });
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) {
+    // Tolerate a value already stored that is not in the list (imported data,
+    // or a record from before this became a picker) rather than silently
+    // blanking it.
+    final options = <String>{
+      ...Ghana.regionNames,
+      if (value != null && value!.isNotEmpty) value!,
+    }.toList()
+      ..sort();
+
+    return LabelledField(
+      label: Ghana.regionLabel,
+      child: DropdownButtonFormField<String>(
+        initialValue: value?.isEmpty ?? true ? null : value,
+        isExpanded: true,
+        hint: const Text('Choose a region'),
+        items: [
+          if (!required)
+            const DropdownMenuItem<String>(value: null, child: Text('None')),
+          for (final region in options)
+            DropdownMenuItem(value: region, child: Text(region)),
+        ],
+        onChanged: onChanged,
+        validator: required
+            ? (v) => (v == null || v.isEmpty) ? 'Choose a region' : null
+            : null,
+      ),
+    );
+  }
+}
+
+/// Phone field that accepts what people actually type and stores one format.
+///
+/// `024 123 4567`, `+233241234567` and `241234567` all normalise to
+/// `+233 24 123 4567` on save, so the directory does not end up with the same
+/// number written five ways.
+class PhoneField extends StatelessWidget {
+  const PhoneField({
+    super.key,
+    required this.controller,
+    this.label = 'Phone',
+  });
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return LabelledField(
+      label: label,
+      hint: 'Any format — saved as +233 XX XXX XXXX',
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        decoration: const InputDecoration(hintText: '024 123 4567'),
+        validator: Ghana.validatePhone,
+        onEditingComplete: () {
+          controller.text = Ghana.formatPhone(controller.text);
+        },
       ),
     );
   }

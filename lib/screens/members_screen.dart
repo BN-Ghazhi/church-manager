@@ -46,7 +46,7 @@ class MembersScreen extends ConsumerWidget {
                   headers: const [
                     'First name', 'Last name', 'Email', 'Phone', 'Gender',
                     'Date of birth', 'Marital status', 'Status', 'Joined',
-                    'Branch', 'Address', 'City', 'Baptised', 'Tags',
+                    'Branch', 'Address', 'City', 'Region', 'Baptised', 'Tags',
                   ],
                   rows: [
                     for (final m in members)
@@ -57,7 +57,7 @@ class MembersScreen extends ConsumerWidget {
                         m.maritalStatus.label, m.status.label,
                         m.joinedAt.toIso8601String().split('T').first,
                         ref.read(branchNameProvider(m.branchId)),
-                        m.address.line1, m.address.city,
+                        m.address.line1, m.address.city, m.address.region,
                         m.isBaptized ? 'Yes' : 'No',
                         m.tags.join('; '),
                       ],
@@ -122,7 +122,8 @@ class MembersScreen extends ConsumerWidget {
             initialSortDescending: true,
             searchHint: 'Search by name, email or phone…',
             searchable: (m) =>
-                '${m.fullName} ${m.email} ${m.phone} ${m.address.city} ${m.tags.join(' ')}',
+                '${m.fullName} ${m.email} ${m.phone} ${m.address.city}'
+                ' ${m.address.region} ${m.tags.join(' ')}',
             onRowTap: (m) => context.go('/members/${m.id}'),
             toolbarAction: FilledButton.icon(
               onPressed: () => showMemberForm(context),

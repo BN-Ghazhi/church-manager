@@ -38,6 +38,26 @@ dark themed, passing `flutter analyze` with zero issues and 21 tests.
 /settings       Church profile, services, appearance, preferences, integrations
 ```
 
+### Ghana is not the United States
+
+`lib/config/ghana.dart` holds the country-specific reference data, because
+getting this wrong is the kind of thing that quietly annoys every user:
+
+* **Regions, not states.** Ghana has sixteen regions (six of them created in the
+  2018 reorganisation, which an older list would omit). Addresses pick from that
+  list rather than accepting free text — typing produces "Gt. Accra",
+  "greater accra" and "Accra Region" for one place, which then breaks any
+  grouping by region. The database column is still called `state` because
+  renaming it needs a migration; `Address.region` is the accessor to use.
+* **A region is inferred from the city** where the city is recognisable, so the
+  common case needs no extra thought. An unrecognised city leaves the field
+  alone rather than guessing.
+* **Phone numbers** normalise to `+233 XX XXX XXXX` from whatever was typed —
+  `0241234567`, `241234567`, `+233241234567`. A number that is not a Ghanaian
+  mobile (a landline, or one from abroad) is stored unchanged rather than
+  mangled into a shape it does not have.
+* Dates are day-first and amounts are in cedis, both handled by `Fmt`.
+
 ### The app ships empty
 
 A fresh database holds one headquarters branch, one administrator and the

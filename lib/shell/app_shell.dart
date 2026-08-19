@@ -32,7 +32,11 @@ class AppShell extends ConsumerWidget {
     final current = findNavItem(location);
 
     final isCompact = AppBreakpoints.isCompact(width);
-    final isExpanded = AppBreakpoints.isExpanded(width);
+
+    // The sidebar shows labels when there is room *and* the user has not
+    // collapsed it. Below the medium breakpoint there is no room either way.
+    final isExpanded = AppBreakpoints.isExpanded(width) &&
+        !ref.watch(sidebarCollapsedProvider);
 
     return CallbackShortcuts(
       bindings: {
@@ -172,12 +176,17 @@ class _SidebarContent extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Wraps to a second line rather than clipping: a church
+                        // name is not something to truncate, and "Kingdom Grace
+                        // Chapel" does not fit the sidebar on one line.
                         Text(
                           ChurchConfig.name,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
                         ),
                         Text(
                           ChurchConfig.tagline,
@@ -343,6 +352,7 @@ class _TopBar extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final width = MediaQuery.sizeOf(context).width;
     final isCompact = AppBreakpoints.isCompact(width);
+    final collapsed = ref.watch(sidebarCollapsedProvider);
     final section = findNavItem(location) != null
         ? sectionOf(findNavItem(location)!.route)
         : null;
@@ -366,6 +376,19 @@ class _TopBar extends ConsumerWidget {
                 onPressed: () => Scaffold.of(context).openDrawer(),
                 tooltip: 'Open navigation',
               ),
+            )
+          else
+            // Lets the sidebar be collapsed to icons even when the window is
+            // wide enough for labels, for anyone who wants the screen space.
+            IconButton(
+              icon: Icon(
+                collapsed
+                    ? Icons.keyboard_double_arrow_right
+                    : Icons.keyboard_double_arrow_left,
+              ),
+              tooltip: collapsed ? 'Expand sidebar' : 'Collapse sidebar',
+              onPressed: () =>
+                  ref.read(sidebarCollapsedProvider.notifier).toggle(),
             ),
           // Breadcrumb
           Expanded(

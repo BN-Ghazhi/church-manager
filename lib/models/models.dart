@@ -50,11 +50,23 @@ class Address {
 
   final String line1;
   final String city;
+
+  /// The Ghanaian region. Named `state` because that is the database column and
+  /// renaming it would need a migration; [region] is the term to use in code
+  /// and anything user-facing, since Ghana has regions rather than states.
   final String state;
   final String country;
 
-  String get short => '$city, $state';
-  String get full => '$line1, $city, $state, $country';
+  String get region => state;
+
+  /// "Accra, Greater Accra" — parts that are blank are left out rather than
+  /// producing "Accra, " or a leading comma.
+  String get short => _join([city, state]);
+
+  String get full => _join([line1, city, state, country]);
+
+  static String _join(List<String> parts) =>
+      parts.map((p) => p.trim()).where((p) => p.isNotEmpty).join(', ');
 }
 
 @immutable

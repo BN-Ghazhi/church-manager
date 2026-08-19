@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../config/ghana.dart';
 import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/repository.dart';
@@ -690,7 +691,7 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
   final _code = TextEditingController();
   final _address = TextEditingController();
   final _city = TextEditingController();
-  final _state = TextEditingController();
+  String? _region;
 
   BranchStatus _status = BranchStatus.planting;
   AccentToken _accent = AccentToken.blue;
@@ -698,7 +699,7 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
 
   @override
   void dispose() {
-    for (final c in [_name, _code, _address, _city, _state]) {
+    for (final c in [_name, _code, _address, _city]) {
       c.dispose();
     }
     super.dispose();
@@ -732,8 +733,26 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
           hint: '12 Independence Layout',
           required: true,
         ),
-        PlainTextField(label: 'City', controller: _city, required: true),
-        PlainTextField(label: 'State', controller: _state, required: true),
+        LabelledField(
+          label: 'City or town',
+          child: TextFormField(
+            controller: _city,
+            decoration: const InputDecoration(hintText: 'Kumasi'),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'City is required' : null,
+            // Filling the region from a recognised city saves the common case,
+            // and only when the user has not already chosen one.
+            onChanged: (value) {
+              if (_region != null) return;
+              final inferred = Ghana.regionForCity(value);
+              if (inferred != null) setState(() => _region = inferred);
+            },
+          ),
+        ),
+        RegionField(
+          value: _region,
+          onChanged: (v) => setState(() => _region = v),
+        ),
         EnumField<BranchStatus>(
           label: 'Status',
           values: BranchStatus.values,
@@ -760,7 +779,7 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
             code: _code.text.trim(),
             addressLine: _address.text.trim(),
             city: _city.text.trim(),
-            state: _state.text.trim(),
+            state: _region ?? '',
             status: _status,
             establishedAt: _established,
             accent: _accent,

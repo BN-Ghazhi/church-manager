@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
 import '../config/app_config.dart';
+import '../config/ghana.dart';
 import '../providers/auth.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -111,6 +112,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _field('Phone', 'church.phone', stored, ChurchConfig.phone),
               _field('Website', 'church.website', stored,
                   ChurchConfig.website),
+              _field('Address', 'church.address', stored,
+                  ChurchConfig.addressLine),
+              _field('City or town', 'church.city', stored, ChurchConfig.city),
+              _regionField('church.state', stored),
+              _field('Country', 'church.country', stored, Ghana.country),
               _field('Currency', 'church.currency', stored,
                   ChurchConfig.currency),
               _field('Timezone', 'church.timezone', stored,
@@ -369,6 +375,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   ///
   /// The controller is created once and reused, so typing is not interrupted
   /// each time the settings stream re-emits.
+  /// Region as a picker rather than free text — Ghana has sixteen named
+  /// regions, and typing them produces inconsistent spellings.
+  Widget _regionField(String key, Map<String, String> stored) {
+    final controller = _controllers.putIfAbsent(
+      key,
+      () => TextEditingController(text: stored[key] ?? ''),
+    );
+    final current = controller.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(Ghana.regionLabel,
+            style: Theme.of(context)
+                .textTheme
+                .labelMedium
+                ?.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: current.isEmpty ? null : current,
+          isExpanded: true,
+          hint: const Text('Choose a region'),
+          items: [
+            for (final region in <String>{...Ghana.regionNames, if (current.isNotEmpty) current}.toList()..sort())
+              DropdownMenuItem(value: region, child: Text(region)),
+          ],
+          onChanged: (value) => setState(() => controller.text = value ?? ''),
+        ),
+      ],
+    );
+  }
+
   Widget _field(
     String label,
     String key,

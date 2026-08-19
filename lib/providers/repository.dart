@@ -382,6 +382,22 @@ final givingByBranchProvider = Provider<List<CategoryPoint>>((ref) {
 
 /* ------------------------------------------------------------------ prefs */
 
+/// Whether the user has collapsed the sidebar to icons.
+///
+/// Separate from the width-driven behaviour: below the medium breakpoint the
+/// sidebar collapses regardless, but above it this lets someone reclaim the
+/// width on a smaller laptop screen even when there is technically room.
+final sidebarCollapsedProvider =
+    NotifierProvider<SidebarCollapsedNotifier, bool>(
+        SidebarCollapsedNotifier.new);
+
+class SidebarCollapsedNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
 /// App-wide light/dark/system preference. In-memory for now; persist with
 /// shared_preferences when settings are made durable.
 final themeModeProvider =
