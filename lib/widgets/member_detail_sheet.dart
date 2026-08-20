@@ -19,7 +19,7 @@ import 'member_form.dart';
 void showMemberDetail(BuildContext context, WidgetRef ref, Member member) {
   showDetailSheet<void>(
     context,
-    title: member.fullName,
+    title: member.displayName,
     subtitle: [
       member.status.label,
       ref.read(branchNameProvider(member.branchId)),
@@ -27,6 +27,7 @@ void showMemberDetail(BuildContext context, WidgetRef ref, Member member) {
     ].join(' · '),
     children: [
       DetailRows(entries: {
+        'Title': member.title,
         'Phone': member.phone,
         'Email': member.email,
         'Gender': member.gender.label,

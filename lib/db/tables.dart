@@ -73,6 +73,14 @@ class Members extends Table with _Timestamps {
   TextColumn get country => text().withDefault(const Constant('Ghana'))();
   BoolColumn get isBaptized => boolean().withDefault(const Constant(false))();
 
+  /// An honorific held by the person, e.g. "Pastor", "Reverend", "Deacon".
+  ///
+  /// Free text and deliberately separate from everything else. A church can have
+  /// several pastors at one branch without any of them leading it, so being a
+  /// pastor is not a leadership post and not a system role — it is who the
+  /// person is. Blank for most members.
+  TextColumn get title => text().withDefault(const Constant(''))();
+
   /// Home branch — every member belongs to exactly one.
   TextColumn get branchId => text().references(Branches, #id)();
   TextColumn get groupId => text().nullable()();

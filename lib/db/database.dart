@@ -73,8 +73,9 @@ class AppDatabase extends _$AppDatabase {
   /// 2 — accounts sign in with a username rather than an email address.
   /// 3 — role permissions are editable, so their overrides need somewhere to live.
   /// 4 — branches carry their own phone, email and website.
+  /// 5 — members carry a title, so a branch can have several pastors.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -120,6 +121,11 @@ class AppDatabase extends _$AppDatabase {
             ]) {
               await m.addColumn(branches, column);
             }
+          }
+
+          // v4 → v5: one defaulted column, so existing members stay valid.
+          if (from < 5 && await _tableExists('members')) {
+            await m.addColumn(members, members.title);
           }
         },
         beforeOpen: (details) async {
@@ -268,6 +274,7 @@ extension MemberMapping on MemberRow {
         familyId: familyId,
         notes: notes,
         tags: tags.isEmpty ? const [] : tags.split('|'),
+        title: title,
       );
 }
 

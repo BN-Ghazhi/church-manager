@@ -1253,6 +1253,16 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _branchIdMeta = const VerificationMeta(
     'branchId',
   );
@@ -1328,6 +1338,7 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     state,
     country,
     isBaptized,
+    title,
     branchId,
     groupId,
     familyId,
@@ -1476,6 +1487,12 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
         isBaptized.isAcceptableOrUnknown(data['is_baptized']!, _isBaptizedMeta),
       );
     }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
     if (data.containsKey('branch_id')) {
       context.handle(
         _branchIdMeta,
@@ -1589,6 +1606,10 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_baptized'],
       )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
       branchId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}branch_id'],
@@ -1640,6 +1661,14 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
   final String country;
   final bool isBaptized;
 
+  /// An honorific held by the person, e.g. "Pastor", "Reverend", "Deacon".
+  ///
+  /// Free text and deliberately separate from everything else. A church can have
+  /// several pastors at one branch without any of them leading it, so being a
+  /// pastor is not a leadership post and not a system role — it is who the
+  /// person is. Blank for most members.
+  final String title;
+
   /// Home branch — every member belongs to exactly one.
   final String branchId;
   final String? groupId;
@@ -1667,6 +1696,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     required this.state,
     required this.country,
     required this.isBaptized,
+    required this.title,
     required this.branchId,
     this.groupId,
     this.familyId,
@@ -1696,6 +1726,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     map['state'] = Variable<String>(state);
     map['country'] = Variable<String>(country);
     map['is_baptized'] = Variable<bool>(isBaptized);
+    map['title'] = Variable<String>(title);
     map['branch_id'] = Variable<String>(branchId);
     if (!nullToAbsent || groupId != null) {
       map['group_id'] = Variable<String>(groupId);
@@ -1732,6 +1763,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       state: Value(state),
       country: Value(country),
       isBaptized: Value(isBaptized),
+      title: Value(title),
       branchId: Value(branchId),
       groupId: groupId == null && nullToAbsent
           ? const Value.absent()
@@ -1770,6 +1802,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       state: serializer.fromJson<String>(json['state']),
       country: serializer.fromJson<String>(json['country']),
       isBaptized: serializer.fromJson<bool>(json['isBaptized']),
+      title: serializer.fromJson<String>(json['title']),
       branchId: serializer.fromJson<String>(json['branchId']),
       groupId: serializer.fromJson<String?>(json['groupId']),
       familyId: serializer.fromJson<String?>(json['familyId']),
@@ -1799,6 +1832,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       'state': serializer.toJson<String>(state),
       'country': serializer.toJson<String>(country),
       'isBaptized': serializer.toJson<bool>(isBaptized),
+      'title': serializer.toJson<String>(title),
       'branchId': serializer.toJson<String>(branchId),
       'groupId': serializer.toJson<String?>(groupId),
       'familyId': serializer.toJson<String?>(familyId),
@@ -1826,6 +1860,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     String? state,
     String? country,
     bool? isBaptized,
+    String? title,
     String? branchId,
     Value<String?> groupId = const Value.absent(),
     Value<String?> familyId = const Value.absent(),
@@ -1850,6 +1885,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     state: state ?? this.state,
     country: country ?? this.country,
     isBaptized: isBaptized ?? this.isBaptized,
+    title: title ?? this.title,
     branchId: branchId ?? this.branchId,
     groupId: groupId.present ? groupId.value : this.groupId,
     familyId: familyId.present ? familyId.value : this.familyId,
@@ -1884,6 +1920,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       isBaptized: data.isBaptized.present
           ? data.isBaptized.value
           : this.isBaptized,
+      title: data.title.present ? data.title.value : this.title,
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       familyId: data.familyId.present ? data.familyId.value : this.familyId,
@@ -1913,6 +1950,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           ..write('state: $state, ')
           ..write('country: $country, ')
           ..write('isBaptized: $isBaptized, ')
+          ..write('title: $title, ')
           ..write('branchId: $branchId, ')
           ..write('groupId: $groupId, ')
           ..write('familyId: $familyId, ')
@@ -1942,6 +1980,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     state,
     country,
     isBaptized,
+    title,
     branchId,
     groupId,
     familyId,
@@ -1970,6 +2009,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           other.state == this.state &&
           other.country == this.country &&
           other.isBaptized == this.isBaptized &&
+          other.title == this.title &&
           other.branchId == this.branchId &&
           other.groupId == this.groupId &&
           other.familyId == this.familyId &&
@@ -1996,6 +2036,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
   final Value<String> state;
   final Value<String> country;
   final Value<bool> isBaptized;
+  final Value<String> title;
   final Value<String> branchId;
   final Value<String?> groupId;
   final Value<String?> familyId;
@@ -2021,6 +2062,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     this.state = const Value.absent(),
     this.country = const Value.absent(),
     this.isBaptized = const Value.absent(),
+    this.title = const Value.absent(),
     this.branchId = const Value.absent(),
     this.groupId = const Value.absent(),
     this.familyId = const Value.absent(),
@@ -2047,6 +2089,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     this.state = const Value.absent(),
     this.country = const Value.absent(),
     this.isBaptized = const Value.absent(),
+    this.title = const Value.absent(),
     required String branchId,
     this.groupId = const Value.absent(),
     this.familyId = const Value.absent(),
@@ -2081,6 +2124,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     Expression<String>? state,
     Expression<String>? country,
     Expression<bool>? isBaptized,
+    Expression<String>? title,
     Expression<String>? branchId,
     Expression<String>? groupId,
     Expression<String>? familyId,
@@ -2107,6 +2151,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
       if (state != null) 'state': state,
       if (country != null) 'country': country,
       if (isBaptized != null) 'is_baptized': isBaptized,
+      if (title != null) 'title': title,
       if (branchId != null) 'branch_id': branchId,
       if (groupId != null) 'group_id': groupId,
       if (familyId != null) 'family_id': familyId,
@@ -2135,6 +2180,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     Value<String>? state,
     Value<String>? country,
     Value<bool>? isBaptized,
+    Value<String>? title,
     Value<String>? branchId,
     Value<String?>? groupId,
     Value<String?>? familyId,
@@ -2161,6 +2207,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
       state: state ?? this.state,
       country: country ?? this.country,
       isBaptized: isBaptized ?? this.isBaptized,
+      title: title ?? this.title,
       branchId: branchId ?? this.branchId,
       groupId: groupId ?? this.groupId,
       familyId: familyId ?? this.familyId,
@@ -2227,6 +2274,9 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     if (isBaptized.present) {
       map['is_baptized'] = Variable<bool>(isBaptized.value);
     }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
     if (branchId.present) {
       map['branch_id'] = Variable<String>(branchId.value);
     }
@@ -2269,6 +2319,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
           ..write('state: $state, ')
           ..write('country: $country, ')
           ..write('isBaptized: $isBaptized, ')
+          ..write('title: $title, ')
           ..write('branchId: $branchId, ')
           ..write('groupId: $groupId, ')
           ..write('familyId: $familyId, ')
@@ -15965,6 +16016,7 @@ typedef $$MembersTableCreateCompanionBuilder =
       Value<String> state,
       Value<String> country,
       Value<bool> isBaptized,
+      Value<String> title,
       required String branchId,
       Value<String?> groupId,
       Value<String?> familyId,
@@ -15992,6 +16044,7 @@ typedef $$MembersTableUpdateCompanionBuilder =
       Value<String> state,
       Value<String> country,
       Value<bool> isBaptized,
+      Value<String> title,
       Value<String> branchId,
       Value<String?> groupId,
       Value<String?> familyId,
@@ -16286,6 +16339,11 @@ class $$MembersTableFilterComposer
 
   ColumnFilters<bool> get isBaptized => $composableBuilder(
     column: $table.isBaptized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16657,6 +16715,11 @@ class $$MembersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get groupId => $composableBuilder(
     column: $table.groupId,
     builder: (column) => ColumnOrderings(column),
@@ -16771,6 +16834,9 @@ class $$MembersTableAnnotationComposer
     column: $table.isBaptized,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
 
   GeneratedColumn<String> get groupId =>
       $composableBuilder(column: $table.groupId, builder: (column) => column);
@@ -17091,6 +17157,7 @@ class $$MembersTableTableManager
                 Value<String> state = const Value.absent(),
                 Value<String> country = const Value.absent(),
                 Value<bool> isBaptized = const Value.absent(),
+                Value<String> title = const Value.absent(),
                 Value<String> branchId = const Value.absent(),
                 Value<String?> groupId = const Value.absent(),
                 Value<String?> familyId = const Value.absent(),
@@ -17116,6 +17183,7 @@ class $$MembersTableTableManager
                 state: state,
                 country: country,
                 isBaptized: isBaptized,
+                title: title,
                 branchId: branchId,
                 groupId: groupId,
                 familyId: familyId,
@@ -17143,6 +17211,7 @@ class $$MembersTableTableManager
                 Value<String> state = const Value.absent(),
                 Value<String> country = const Value.absent(),
                 Value<bool> isBaptized = const Value.absent(),
+                Value<String> title = const Value.absent(),
                 required String branchId,
                 Value<String?> groupId = const Value.absent(),
                 Value<String?> familyId = const Value.absent(),
@@ -17168,6 +17237,7 @@ class $$MembersTableTableManager
                 state: state,
                 country: country,
                 isBaptized: isBaptized,
+                title: title,
                 branchId: branchId,
                 groupId: groupId,
                 familyId: familyId,

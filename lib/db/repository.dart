@@ -213,6 +213,7 @@ class ChurchRepository {
     String? notes,
     List<String> tags = const [],
     DateTime? joinedAt,
+    String title = '',
   }) async {
     final id = await _nextId('mem', db.members);
     await db.into(db.members).insert(MembersCompanion.insert(
@@ -233,6 +234,7 @@ class ChurchRepository {
           branchId: branchId,
           notes: Value(notes),
           tags: Value(tags.join('|')),
+          title: Value(title.trim()),
         ));
     return id;
   }
@@ -253,6 +255,7 @@ class ChurchRepository {
     String? city,
     String? state,
     String? notes,
+    String? title,
   }) =>
       (db.update(db.members)..where((t) => t.id.equals(id))).write(
         MembersCompanion(
@@ -276,6 +279,7 @@ class ChurchRepository {
           city: city == null ? const Value.absent() : Value(city),
           state: state == null ? const Value.absent() : Value(state),
           notes: notes == null ? const Value.absent() : Value(notes),
+          title: title == null ? const Value.absent() : Value(title.trim()),
           updatedAt: Value(_now),
         ),
       );

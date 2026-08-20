@@ -335,7 +335,27 @@ the branch filter itself. Note that client-side scoping is a convenience, not a
 security boundary — when a server arrives, the same filter must be enforced
 server-side (§4, item 5).
 
-### 2.9 Leadership is derived, not stored
+### 2.9 Three separate ideas: title, post, account
+
+Conflating any two of these breaks the church's actual structure, so they are
+kept apart deliberately:
+
+- **Title** — `Member.title`, free text. An honorific the person carries. A
+  branch may have a senior pastor, two associates and a youth pastor; all four
+  are pastors and only the first leads anything. `Member.isPastor` matches on the
+  text rather than an enum, because churches word these differently ("Snr.
+  Pastor", "Rev. Dr.", "Apostle") and a fixed list would need a code change every
+  time one is added.
+- **Post** — a column on the branch, department or group. One holder per job, so
+  it lives on the thing being led (§2.10).
+- **Account** — a `StaffUser` with a role in the permission matrix. Most pastors
+  never sign in, and a title must never imply a login.
+
+The temptation was a `pastors` table or a `pastor` role. Either would have made a
+title mean access, which is precisely wrong: a title is who someone is, an
+account is what they may do.
+
+### 2.10 Leadership is derived, not stored
 
 A branch already names its pastor, a department its head, a group its leader.
 `leadershipPostsProvider` assembles the Pastors tab from those columns instead of
@@ -349,7 +369,7 @@ the table itself sort sensibly without a separate rank column.
 `setGroupLeader` was added alongside `createSmallGroup`: groups had a table and a
 `leaderId` column but no way to create one, so that post could never be filled.
 
-### 2.10 Stat cards that lead somewhere
+### 2.11 Stat cards that lead somewhere
 
 `StatCard.accent` and `StatCard.onTap` are optional and belong together. Colour
 is not decoration here — it is the affordance that says the tile is pressable,
@@ -363,7 +383,7 @@ Deliberately not applied everywhere. A row of six identically-washed cards is
 louder without being clearer, so the tint marks the numbers a screen exists to
 lead with.
 
-### 2.11 Colour and links
+### 2.12 Colour and links
 
 `accentColor` (`lib/theme/app_theme.dart`) is the single mapping from the six
 `AccentToken` values to real colours. It had been copy-pasted into three screens
@@ -378,7 +398,7 @@ read as a relative path and fails silently; an address becomes a maps search, so
 it works without coordinates. A link that cannot be handled says so rather than
 doing nothing, because a dead tap reads as a broken app.
 
-### 2.12 Branding
+### 2.13 Branding
 
 The sidebar logo and the sign-in background can be replaced from Settings. The
 chosen file is **copied into the app's own storage** rather than referenced where
@@ -387,7 +407,7 @@ moves, and the app would silently lose its logo. Only the copy's path lives in
 the settings table, and a missing file falls back to the built-in default rather
 than rendering a broken box, because the database can outlive the image.
 
-### 2.13 Persistence
+### 2.14 Persistence
 
 One SQLite file, via Drift, in the platform's application-support directory. No
 server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
@@ -410,7 +430,7 @@ Each install has its **own** database — a branch laptop is not visible to
 headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
 three options and what each costs.
 
-### 2.14 Notable decisions and their reasons
+### 2.15 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through

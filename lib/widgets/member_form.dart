@@ -12,8 +12,10 @@ import 'page_scaffold.dart';
 
 /// Create/edit member form.
 ///
-/// Submission is a stub until the API exists — it validates the required
-/// fields, reports success and closes, and says plainly that nothing persists.
+/// The Title field is what makes several pastors at one branch possible: a title
+/// belongs to the person, not to a post, so a branch can have a branch pastor
+/// plus any number of associate or youth pastors — and carrying a title grants
+/// no access to the system, which is set separately in Roles & Access.
 Future<void> showMemberForm(BuildContext context, {Member? member}) {
   return showDialog<void>(
     context: context,
@@ -33,6 +35,7 @@ class _MemberFormDialog extends ConsumerStatefulWidget {
 class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
   final _formKey = GlobalKey<FormState>();
   String? _region;
+  late final TextEditingController _title;
   late final TextEditingController _first;
   late final TextEditingController _last;
   late final TextEditingController _email;
@@ -56,6 +59,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
     super.initState();
     _region = widget.member?.address.state;
     final m = widget.member;
+    _title = TextEditingController(text: m?.title ?? '');
     _first = TextEditingController(text: m?.firstName ?? '');
     _last = TextEditingController(text: m?.lastName ?? '');
     _email = TextEditingController(text: m?.email ?? '');
@@ -75,7 +79,16 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
 
   @override
   void dispose() {
-    for (final c in [_first, _last, _email, _phone, _address, _city, _notes]) {
+    for (final c in [
+      _title,
+      _first,
+      _last,
+      _email,
+      _phone,
+      _address,
+      _city,
+      _notes,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -112,6 +125,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           city: _city.text.trim(),
           state: _region ?? '',
           notes: _notes.text.trim(),
+          title: _title.text.trim(),
         );
       } else {
         await repo.createMember(
@@ -129,6 +143,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           city: _city.text.trim(),
           state: _region ?? '',
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          title: _title.text.trim(),
         );
       }
 
@@ -171,6 +186,35 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                   minItemWidth: 230,
                   maxColumns: 2,
                   children: [
+                    // Free text, with common Ghanaian church titles suggested.
+                    // A fixed list would need a code change every time the
+                    // church recognises a new one.
+                    _field(
+                      'Title',
+                      Autocomplete<String>(
+                        optionsBuilder: (value) {
+                          final needle = value.text.trim().toLowerCase();
+                          if (needle.isEmpty) return _titleSuggestions;
+                          return _titleSuggestions.where(
+                              (t) => t.toLowerCase().contains(needle));
+                        },
+                        onSelected: (v) => _title.text = v,
+                        fieldViewBuilder:
+                            (context, controller, focusNode, onSubmit) {
+                          // Autocomplete owns its controller, so the two are
+                          // kept in step rather than duplicated.
+                          controller.text = _title.text;
+                          return TextFormField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            decoration: const InputDecoration(
+                              hintText: 'Pastor (leave blank for most members)',
+                            ),
+                            onChanged: (v) => _title.text = v,
+                          );
+                        },
+                      ),
+                    ),
                     _field(
                       'First name',
                       TextFormField(
@@ -370,3 +414,22 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
     );
   }
 }
+
+/// Suggested honorifics — a starting point, not a restriction.
+const _titleSuggestions = <String>[
+  'Pastor',
+  'Snr. Pastor',
+  'Associate Pastor',
+  'Assistant Pastor',
+  'Youth Pastor',
+  "Children's Pastor",
+  'Reverend',
+  'Rev. Dr.',
+  'Bishop',
+  'Apostle',
+  'Evangelist',
+  'Deacon',
+  'Deaconess',
+  'Elder',
+  'Minister',
+];

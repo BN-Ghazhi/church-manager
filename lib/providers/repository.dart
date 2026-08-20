@@ -299,8 +299,25 @@ final leadershipPostsProvider = Provider<List<LeadershipPost>>((ref) {
   return posts;
 });
 
-/// Leadership posts grouped by the member who holds them, so one person
-/// appearing twice is one row with two roles rather than two rows.
+/// Everyone carrying a pastoral title, whether or not they lead anything.
+///
+/// A branch can have a branch pastor plus several associate or youth pastors,
+/// and only the first of those holds a post. Titles are the answer: the branch
+/// leadership columns say who *leads*, and this says who *is a pastor*.
+final pastorsProvider = Provider<List<Member>>((ref) {
+  final pastors =
+      ref.watch(membersProvider).where((m) => m.isPastor).toList();
+  pastors.sort((a, b) => a.lastName.compareTo(b.lastName));
+  return pastors;
+});
+
+/// The Pastors & leaders list: everyone with a pastoral title or a post.
+///
+/// Both kinds belong here, and they overlap. A branch pastor usually has both a
+/// title and a post; an associate pastor has a title and no post; a department
+/// head may have a post and no title. Keying by member means each person is one
+/// row regardless of which applies, so nobody is listed twice and nobody with a
+/// title is left out just because they lead nothing.
 final leadersProvider = Provider<List<({Member member, List<LeadershipPost> posts})>>(
   (ref) {
     final byMember = <String, List<LeadershipPost>>{};
@@ -309,6 +326,11 @@ final leadersProvider = Provider<List<({Member member, List<LeadershipPost> post
     }
 
     final members = ref.watch(membersProvider);
+    // Titled pastors with no post still get a row, with an empty post list.
+    for (final pastor in ref.watch(pastorsProvider)) {
+      byMember.putIfAbsent(pastor.id, () => []);
+    }
+
     final rows = <({Member member, List<LeadershipPost> posts})>[];
     for (final entry in byMember.entries) {
       final member = members.where((m) => m.id == entry.key).firstOrNull;
@@ -318,10 +340,11 @@ final leadersProvider = Provider<List<({Member member, List<LeadershipPost> post
     }
 
     rows.sort((a, b) {
-      final bySeniority =
-          a.posts.first.role.index.compareTo(b.posts.first.role.index);
-      return bySeniority != 0
-          ? bySeniority
+      // Post-holders first, most senior post leading; then titled pastors.
+      final rankA = a.posts.isEmpty ? 99 : a.posts.first.role.index;
+      final rankB = b.posts.isEmpty ? 99 : b.posts.first.role.index;
+      return rankA != rankB
+          ? rankA.compareTo(rankB)
           : a.member.lastName.compareTo(b.member.lastName);
     });
     return rows;

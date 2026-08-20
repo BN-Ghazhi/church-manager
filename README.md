@@ -60,9 +60,32 @@ always keeps full access — it is the account that fixes everyone else's.
 
 ## Pastors and leaders
 
-**Members → Pastors & leaders** lists everyone holding a post: branch pastors and
-assistants, department heads and assistants, and group leaders. Someone holding
-two posts is one row showing both.
+A branch can have several pastors. Only one of them *leads* it, and the two facts
+are stored separately:
+
+- **A title** belongs to the person. Set it on the member record — "Pastor",
+  "Associate Pastor", "Youth Pastor", "Reverend". Free text, with the common ones
+  suggested, so a branch can have as many pastors as it actually has.
+- **A post** belongs to the branch, department or group. Branch pastor,
+  assistant, department head, group leader — one holder each, because there is
+  one of each job.
+
+**Neither grants access to the system.** Most pastors never sign in; a login is
+created separately in Roles & Access. That separation is deliberate — being a
+pastor is who someone is, not what they may do in a database.
+
+**Members → Pastors & leaders** lists both: everyone with a pastoral title *or* a
+post. Someone holding two posts is one row showing both; a pastor who leads
+nothing still gets a row, marked "No post — pastor by title".
+
+### Adding a pastor
+
+1. **Members → Add member** (or edit an existing one)
+2. Set **Title** to "Pastor", "Associate Pastor" or whatever they are called
+3. Save — they now appear under Pastors & leaders
+
+To put one of them *over* a branch, department or group, use **Appoint a leader**
+on that tab. That is a separate step, because most pastors lead no unit.
 
 The list is derived from the branches, departments and groups themselves, not
 stored separately — so it can never disagree with them. "Appoint a leader" writes

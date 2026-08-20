@@ -91,6 +91,7 @@ class Member {
     this.familyId,
     this.notes,
     this.tags = const [],
+    this.title = '',
   });
 
   final String id;
@@ -117,7 +118,33 @@ class Member {
   final String? notes;
   final List<String> tags;
 
+  /// Honorific, e.g. "Pastor" or "Reverend". Blank for most members.
+  ///
+  /// Deliberately not a leadership post and not a system role: a branch can have
+  /// several pastors, only one of whom leads it, and most of them never sign in.
+  final String title;
+
+  /// The plain name, for sorting and searching.
   String get fullName => '$firstName $lastName';
+
+  /// The name as it should be addressed, with any honorific.
+  String get displayName =>
+      title.isEmpty ? fullName : '$title $firstName $lastName';
+
+  /// True for anyone carrying a pastoral honorific.
+  ///
+  /// Matched on the title text because the church chooses its own wording —
+  /// "Pastor", "Snr. Pastor", "Reverend Minister" — and a fixed list would keep
+  /// needing code changes.
+  bool get isPastor {
+    final t = title.toLowerCase();
+    return t.contains('pastor') ||
+        t.contains('rev') ||
+        t.contains('bishop') ||
+        t.contains('apostle') ||
+        t.contains('minister') ||
+        t.contains('evangelist');
+  }
 
   String get initials {
     final f = firstName.isNotEmpty ? firstName[0] : '';

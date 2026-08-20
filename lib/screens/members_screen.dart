@@ -204,8 +204,8 @@ class _DirectoryTab extends ConsumerWidget {
             initialSortDescending: true,
             searchHint: 'Search by name, email or phone…',
             searchable: (m) =>
-                '${m.fullName} ${m.email} ${m.phone} ${m.address.city}'
-                ' ${m.address.region} ${m.tags.join(' ')}',
+                '${m.title} ${m.fullName} ${m.email} ${m.phone}'
+                ' ${m.address.city} ${m.address.region} ${m.tags.join(' ')}',
             onRowTap: (m) => context.go('/members/${m.id}'),
             toolbarAction: FilledButton.icon(
               onPressed: () => showMemberForm(context),
@@ -237,6 +237,13 @@ class _DirectoryTab extends ConsumerWidget {
                       ref.read(branchByIdProvider(m.branchId))?.name == v,
                 ),
               TableFilter<Member>(
+                id: 'title',
+                label: 'Title',
+                options: const ['Pastors & clergy', 'No title'],
+                matches: (m, v) =>
+                    v == 'Pastors & clergy' ? m.isPastor : m.title.isEmpty,
+              ),
+              TableFilter<Member>(
                 id: 'baptism',
                 label: 'Baptism',
                 options: const ['Baptised', 'Not baptised'],
@@ -249,7 +256,8 @@ class _DirectoryTab extends ConsumerWidget {
                 header: 'Member',
                 flex: 3,
                 sortValue: (m) => '${m.lastName} ${m.firstName}',
-                cell: (m) => PersonTile(name: m.fullName, secondary: m.email),
+                cell: (m) =>
+                    PersonTile(name: m.displayName, secondary: m.email),
               ),
               TableColumn<Member>(
                 id: 'phone',
@@ -332,6 +340,7 @@ class _LeadersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final leaders = ref.watch(leadersProvider);
     final posts = ref.watch(leadershipPostsProvider);
+    final pastors = ref.watch(pastorsProvider);
     final canEdit = ref.watch(canEditProvider('Members'));
     final theme = Theme.of(context);
 
@@ -343,8 +352,9 @@ class _LeadersTab extends ConsumerWidget {
         PageHeader(
           title: 'Pastors & leaders',
           description:
-              'Everyone holding a post, drawn from the branches, departments and '
-              'groups themselves — so this list is never out of step with them.',
+              'Everyone with a pastoral title or a leadership post. A title is '
+              'set on the member — so a branch can have several pastors — while '
+              'a post is held on the branch, department or group itself.',
           actions: [
             if (canEdit)
               FilledButton.icon(
@@ -360,17 +370,17 @@ class _LeadersTab extends ConsumerWidget {
           maxColumns: 4,
           children: [
             StatCard(
-              label: 'People leading',
-              value: '${leaders.length}',
-              hint: '${posts.length} posts in total',
-              icon: Icons.workspace_premium_outlined,
+              label: 'Pastors',
+              value: '${pastors.length}',
+              hint: 'by title, whether or not they lead',
+              icon: Icons.church_outlined,
               accent: AppTheme.violet,
             ),
             StatCard(
-              label: 'Branch pastors',
+              label: 'Leading a branch',
               value: '${countOf(LeadershipRole.branchPastor)}',
               hint: '${countOf(LeadershipRole.assistantPastor)} assistants',
-              icon: Icons.church_outlined,
+              icon: Icons.account_tree_outlined,
             ),
             LinkedStatCard(
               label: 'Department heads',
@@ -393,15 +403,16 @@ class _LeadersTab extends ConsumerWidget {
         SectionCard(
           title: 'Leadership',
           description: leaders.isEmpty
-              ? 'Nobody holds a post yet.'
-              : 'One row per person. Someone holding two posts shows both.',
+              ? 'No pastors or leaders yet.'
+              : 'One row per person, whether they hold a title, a post, or both.',
           child: leaders.isEmpty
               ? EmptyState(
-                  title: 'No leaders appointed',
+                  title: 'No pastors or leaders yet',
                   description: canEdit
-                      ? 'Use "Appoint a leader" once you have members and a '
-                          'branch, department or group for them to lead.'
-                      : 'Nobody has been appointed to a post yet.',
+                      ? 'Give a member the title "Pastor" on their record to '
+                          'list them here, or use "Appoint a leader" to put '
+                          'someone over a branch, department or group.'
+                      : 'Nobody has a pastoral title or a post yet.',
                   icon: Icons.workspace_premium_outlined,
                 )
               : DataTableView<({Member member, List<LeadershipPost> posts})>(
@@ -410,7 +421,7 @@ class _LeadersTab extends ConsumerWidget {
                   pageSize: 12,
                   searchHint: 'Search by name or what they lead…',
                   searchable: (r) =>
-                      '${r.member.fullName} '
+                      '${r.member.displayName} ${r.member.title} '
                       '${r.posts.map((p) => '${p.role.label} ${p.scopeName}').join(' ')}',
                   onRowTap: (r) => showMemberDetail(context, ref, r.member),
                   filters: [
@@ -430,7 +441,9 @@ class _LeadersTab extends ConsumerWidget {
                       flex: 3,
                       sortValue: (r) => r.member.lastName,
                       cell: (r) => PersonTile(
-                        name: r.member.fullName,
+                        // The title is part of how they are addressed, so it
+                        // belongs with the name rather than in its own column.
+                        name: r.member.displayName,
                         secondary: r.member.phone.isEmpty
                             ? r.member.email
                             : r.member.phone,
@@ -444,6 +457,16 @@ class _LeadersTab extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // A titled pastor who leads nothing is normal, not a
+                          // gap to be filled.
+                          if (r.posts.isEmpty)
+                            Text(
+                              'No post — pastor by title',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           for (final post in r.posts.take(3))
                             Text(
                               '${post.role.label} · ${post.scopeName}',
@@ -483,11 +506,15 @@ class _LeadersTab extends ConsumerWidget {
                       cell: (r) => RowActions(
                         onView: () => showMemberDetail(context, ref, r.member),
                         onEdit: canEdit
-                            ? () => showLeadershipForm(
-                                  context,
-                                  role: r.posts.first.role,
-                                  memberId: r.member.id,
-                                )
+                            ? () => r.posts.isEmpty
+                                // Nothing to reassign, so edit the person —
+                                // which is where their title lives.
+                                ? showMemberForm(context, member: r.member)
+                                : showLeadershipForm(
+                                    context,
+                                    role: r.posts.first.role,
+                                    memberId: r.member.id,
+                                  )
                             : null,
                         // Removing a post is done by reassigning it, from the
                         // branch, department or group that owns it. A delete
