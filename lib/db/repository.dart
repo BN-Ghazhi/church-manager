@@ -56,6 +56,9 @@ class ChurchRepository {
     required domain.AccentToken accent,
     String? pastorId,
     String? assistantPastorId,
+    String phone = '',
+    String email = '',
+    String website = '',
   }) async {
     final id = await _nextId('brn', db.branches);
     await db.into(db.branches).insert(BranchesCompanion.insert(
@@ -70,6 +73,9 @@ class ChurchRepository {
           accent: accent.name,
           pastorId: Value(pastorId),
           assistantPastorId: Value(assistantPastorId),
+          phone: Value(phone),
+          email: Value(email),
+          website: Value(website),
         ));
     return id;
   }
@@ -84,6 +90,11 @@ class ChurchRepository {
     domain.BranchStatus? status,
     String? pastorId,
     String? assistantPastorId,
+    domain.AccentToken? accent,
+    DateTime? establishedAt,
+    String? phone,
+    String? email,
+    String? website,
   }) =>
       (db.update(db.branches)..where((t) => t.id.equals(id))).write(
         BranchesCompanion(
@@ -98,6 +109,11 @@ class ChurchRepository {
           assistantPastorId: assistantPastorId == null
               ? const Value.absent()
               : Value(assistantPastorId),
+          accent: accent == null ? const Value.absent() : Value(accent.name),
+          establishedAt: _opt(establishedAt),
+          phone: _opt(phone),
+          email: _opt(email),
+          website: _opt(website),
           updatedAt: Value(_now),
         ),
       );

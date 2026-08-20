@@ -80,7 +80,7 @@ void main() {
     // The HQ row, which has members to choose from.
     await tester.tap(find.byTooltip('View').first);
     await settle(tester);
-    await tester.tap(find.text('Edit leadership'));
+    await tester.tap(find.text('Leadership'));
     await settle(tester);
     expect(tester.takeException(), isNull);
 

@@ -357,10 +357,14 @@ class PhoneField extends StatelessWidget {
     super.key,
     required this.controller,
     this.label = 'Phone',
+    this.required = true,
   });
 
   final TextEditingController controller;
   final String label;
+
+  /// A branch or a member may legitimately have no phone number.
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
@@ -371,7 +375,9 @@ class PhoneField extends StatelessWidget {
         controller: controller,
         keyboardType: TextInputType.phone,
         decoration: const InputDecoration(hintText: '024 123 4567'),
-        validator: Ghana.validatePhone,
+        validator: (v) => (!required && (v ?? '').trim().isEmpty)
+            ? null
+            : Ghana.validatePhone(v),
         onEditingComplete: () {
           controller.text = Ghana.formatPhone(controller.text);
         },
@@ -551,3 +557,80 @@ String enumLabel(Object value) => switch (value) {
       MemberStatus v => v.label,
       _ => value.toString(),
     };
+
+/// Picks a branch or department's accent colour, showing the actual colours.
+///
+/// A dropdown of the words "blue", "emerald", "violet" makes the user guess what
+/// they are choosing, and the whole point of the field is how the card will look.
+class AccentField extends StatelessWidget {
+  const AccentField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.label = 'Colour',
+  });
+
+  final AccentToken value;
+  final ValueChanged<AccentToken> onChanged;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return LabelledField(
+      label: label,
+      hint: 'Used for this branch\'s badge and card.',
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          for (final token in AccentToken.values)
+            _Swatch(
+              token: token,
+              selected: token == value,
+              onTap: () => onChanged(token),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    required this.token,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AccentToken token;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colour = accentColor(token);
+
+    return Tooltip(
+      message: token.name,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          width: 40,
+          height: 32,
+          decoration: BoxDecoration(
+            color: colour.withValues(alpha: selected ? 1 : 0.22),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: selected ? colour : Theme.of(context).colorScheme.outlineVariant,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: selected
+              ? const Icon(Icons.check, size: 16, color: Colors.white)
+              : null,
+        ),
+      ),
+    );
+  }
+}

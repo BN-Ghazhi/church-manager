@@ -39,6 +39,16 @@ part 'database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
+  /// Whether a table is present, for migrations that must tolerate a database
+  /// missing pieces they would otherwise assume.
+  Future<bool> _tableExists(String name) async {
+    final rows = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+      variables: [Variable<String>(name)],
+    ).get();
+    return rows.isNotEmpty;
+  }
+
   /// Dates are stored as ISO-8601 UTC text rather than drift's default unix
   /// seconds. The default returns local `DateTime`s on read, so a value written
   /// as UTC comes back with `isUtc == false` and no longer compares equal to
@@ -62,8 +72,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// 2 — accounts sign in with a username rather than an email address.
   /// 3 — role permissions are editable, so their overrides need somewhere to live.
+  /// 4 — branches carry their own phone, email and website.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +103,23 @@ class AppDatabase extends _$AppDatabase {
           // matrix is still the answer until someone edits a role.
           if (from < 3) {
             await m.createTable(permissionOverrides);
+          }
+
+          // v3 → v4: three optional contact columns, defaulted to empty, so
+          // existing branches are valid without being touched.
+          //
+          // Guarded on the table existing. A real install always has it, but a
+          // database restored or hand-built without every table should still
+          // open — a migration that throws here locks someone out of their own
+          // records, which is far worse than a missing column.
+          if (from < 4 && await _tableExists('branches')) {
+            for (final column in [
+              branches.phone,
+              branches.email,
+              branches.website,
+            ]) {
+              await m.addColumn(branches, column);
+            }
           }
         },
         beforeOpen: (details) async {
@@ -206,6 +234,9 @@ extension BranchMapping on BranchRow {
         assistantPastorId: assistantPastorId,
         accent: domain.AccentToken.values.byName(accent),
         isHeadquarters: isHeadquarters,
+        phone: phone,
+        email: email,
+        website: website,
       );
 }
 

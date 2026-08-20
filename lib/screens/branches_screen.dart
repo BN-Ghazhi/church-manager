@@ -5,11 +5,11 @@ import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
-import '../shell/branch_switcher.dart' show accentColor;
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/charts.dart';
 import '../widgets/feedback.dart';
+import '../widgets/contact_link.dart';
 import '../widgets/data_table_view.dart';
 import '../widgets/row_actions.dart';
 import '../widgets/collapsible.dart';
@@ -91,25 +91,37 @@ class BranchesScreen extends ConsumerWidget {
         ),
 
         if (branches.length > 1)
-          SplitRow(
-            primary: SectionCard(
-              title: 'Members by branch',
-              description: 'Relative size of each campus.',
-              child: CategoryBarChart(
-                data: ref.watch(membersByBranchProvider),
-                height: 250,
-              ),
-            ),
-            secondary: SectionCard(
-              title: 'Giving by branch',
-              description: 'Contribution to total giving.',
-              child: CategoryBarChart(
-                data: ref.watch(givingByBranchProvider),
-                format: ValueFormat.currency,
-                height: 250,
-              ),
-            ),
-          ),
+          // The giving chart only appears while Finance is switched on;
+          // otherwise the members chart takes the full width rather than
+          // leaving a gap where it used to be.
+          ref.watch(canViewProvider('Giving & Finance'))
+              ? SplitRow(
+                  primary: SectionCard(
+                    title: 'Members by branch',
+                    description: 'Relative size of each campus.',
+                    child: CategoryBarChart(
+                      data: ref.watch(membersByBranchProvider),
+                      height: 250,
+                    ),
+                  ),
+                  secondary: SectionCard(
+                    title: 'Giving by branch',
+                    description: 'Contribution to total giving.',
+                    child: CategoryBarChart(
+                      data: ref.watch(givingByBranchProvider),
+                      format: ValueFormat.currency,
+                      height: 250,
+                    ),
+                  ),
+                )
+              : SectionCard(
+                  title: 'Members by branch',
+                  description: 'Relative size of each campus.',
+                  child: CategoryBarChart(
+                    data: ref.watch(membersByBranchProvider),
+                    height: 250,
+                  ),
+                ),
 
         SectionCard(
           title: 'Branches',
@@ -150,7 +162,21 @@ class BranchesScreen extends ConsumerWidget {
                 header: 'Branch',
                 flex: 3,
                 sortValue: (b) => b.name,
-                cell: (b) => Column(
+                cell: (b) => Row(
+                  children: [
+                    // The branch's colour as a stripe, so a long list is
+                    // scannable by campus at a glance.
+                    Container(
+                      width: 3,
+                      height: 30,
+                      margin: const EdgeInsets.only(right: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: accentColor(b.accent),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -186,7 +212,22 @@ class BranchesScreen extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.labelSmall),
                   ],
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              TableColumn<Branch>(
+                id: 'contact',
+                header: 'Contact',
+                flex: 2,
+                hideOnNarrow: true,
+                cell: (b) => b.phone.isNotEmpty
+                    ? ContactLink(kind: ContactKind.phone, value: b.phone)
+                    : b.email.isNotEmpty
+                        ? ContactLink(kind: ContactKind.email, value: b.email)
+                        : Text('—',
+                            style: Theme.of(context).textTheme.bodySmall),
               ),
               TableColumn<Branch>(
                 id: 'pastor',
@@ -238,7 +279,7 @@ class BranchesScreen extends ConsumerWidget {
                 cell: (b) => RowActions(
                   onView: () => _showBranch(context, ref, b),
                   onEdit: canEdit
-                      ? () => showBranchLeadershipForm(context, branch: b)
+                      ? () => showBranchForm(context, branch: b)
                       : null,
                   onDelete: canEdit && !b.isHeadquarters
                       ? () => _deleteBranch(context, ref, b)
@@ -271,10 +312,6 @@ class BranchesScreen extends ConsumerWidget {
       .read(attendanceRecordsProvider)
       .where((r) => r.branchId == branch.id)
       .toList();
-  final giving = ref
-      .read(donationsProvider)
-      .where((d) => d.branchId == branch.id)
-      .fold(0.0, (sum, d) => sum + d.amount);
   final canEdit = ref.read(canEditProvider('Branches'));
 
   showDetailSheet<void>(
@@ -297,8 +334,8 @@ class BranchesScreen extends ConsumerWidget {
         'Members': Fmt.number(members.length),
         'Departments': '${departments.length}',
         'Services recorded': '${attendance.length}',
-        'Total giving': Fmt.currency(giving),
       }),
+      _BranchContact(branch: branch),
     ],
     actions: (close) => [
       if (canEdit)
@@ -307,8 +344,17 @@ class BranchesScreen extends ConsumerWidget {
             close();
             showBranchLeadershipForm(context, branch: branch);
           },
+          icon: const Icon(Icons.people_alt_outlined, size: 16),
+          label: const Text('Leadership'),
+        ),
+      if (canEdit)
+        OutlinedButton.icon(
+          onPressed: () {
+            close();
+            showBranchForm(context, branch: branch);
+          },
           icon: const Icon(Icons.edit_outlined, size: 16),
-          label: const Text('Edit leadership'),
+          label: const Text('Edit details'),
         ),
       FilledButton.icon(
         onPressed: () {
@@ -345,4 +391,76 @@ Future<void> _deleteBranch(
   await ref.read(repositoryProvider).deleteBranch(branch.id);
   if (!context.mounted) return;
   showLocalSuccess(context, '${branch.name} removed.');
+}
+
+/// A branch's contact details, each one a link that opens the right app.
+class _BranchContact extends StatelessWidget {
+  const _BranchContact({required this.branch});
+
+  final Branch branch;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final address = branch.address.full;
+
+    final links = <(String, Widget)>[
+      if (branch.phone.isNotEmpty)
+        ('Phone', ContactLink(kind: ContactKind.phone, value: branch.phone)),
+      if (branch.email.isNotEmpty)
+        ('Email', ContactLink(kind: ContactKind.email, value: branch.email)),
+      if (branch.website.isNotEmpty)
+        (
+          'Website',
+          ContactLink(kind: ContactKind.website, value: branch.website)
+        ),
+      if (address.isNotEmpty)
+        (
+          'Address',
+          ContactLink(
+            kind: ContactKind.map,
+            value: address,
+            label: address,
+          )
+        ),
+    ];
+
+    if (links.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.sm),
+        child: Text(
+          'No contact details yet — add them with Edit details.',
+          style: theme.textTheme.labelSmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.sm),
+        Text('Contact', style: theme.textTheme.titleSmall),
+        const SizedBox(height: 4),
+        for (final (label, link) in links)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 132,
+                  child: Text(
+                    label,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                Expanded(child: link),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }

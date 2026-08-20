@@ -180,6 +180,38 @@ class $BranchesTable extends Branches
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _websiteMeta = const VerificationMeta(
+    'website',
+  );
+  @override
+  late final GeneratedColumn<String> website = GeneratedColumn<String>(
+    'website',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -198,6 +230,9 @@ class $BranchesTable extends Branches
     assistantPastorId,
     accent,
     isHeadquarters,
+    phone,
+    email,
+    website,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -334,6 +369,24 @@ class $BranchesTable extends Branches
         ),
       );
     }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('website')) {
+      context.handle(
+        _websiteMeta,
+        website.isAcceptableOrUnknown(data['website']!, _websiteMeta),
+      );
+    }
     return context;
   }
 
@@ -407,6 +460,18 @@ class $BranchesTable extends Branches
         DriftSqlType.bool,
         data['${effectivePrefix}is_headquarters'],
       )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      )!,
+      website: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}website'],
+      )!,
     );
   }
 
@@ -437,6 +502,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
   final String? assistantPastorId;
   final String accent;
   final bool isHeadquarters;
+
+  /// Contact details, so a branch card can offer a call, an email or a map.
+  /// Optional: a church plant meeting in a school hall may have none of them.
+  final String phone;
+  final String email;
+  final String website;
   const BranchRow({
     required this.createdAt,
     required this.updatedAt,
@@ -454,6 +525,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     this.assistantPastorId,
     required this.accent,
     required this.isHeadquarters,
+    required this.phone,
+    required this.email,
+    required this.website,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -480,6 +554,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     }
     map['accent'] = Variable<String>(accent);
     map['is_headquarters'] = Variable<bool>(isHeadquarters);
+    map['phone'] = Variable<String>(phone);
+    map['email'] = Variable<String>(email);
+    map['website'] = Variable<String>(website);
     return map;
   }
 
@@ -507,6 +584,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           : Value(assistantPastorId),
       accent: Value(accent),
       isHeadquarters: Value(isHeadquarters),
+      phone: Value(phone),
+      email: Value(email),
+      website: Value(website),
     );
   }
 
@@ -534,6 +614,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       ),
       accent: serializer.fromJson<String>(json['accent']),
       isHeadquarters: serializer.fromJson<bool>(json['isHeadquarters']),
+      phone: serializer.fromJson<String>(json['phone']),
+      email: serializer.fromJson<String>(json['email']),
+      website: serializer.fromJson<String>(json['website']),
     );
   }
   @override
@@ -556,6 +639,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       'assistantPastorId': serializer.toJson<String?>(assistantPastorId),
       'accent': serializer.toJson<String>(accent),
       'isHeadquarters': serializer.toJson<bool>(isHeadquarters),
+      'phone': serializer.toJson<String>(phone),
+      'email': serializer.toJson<String>(email),
+      'website': serializer.toJson<String>(website),
     };
   }
 
@@ -576,6 +662,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     Value<String?> assistantPastorId = const Value.absent(),
     String? accent,
     bool? isHeadquarters,
+    String? phone,
+    String? email,
+    String? website,
   }) => BranchRow(
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -595,6 +684,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
         : this.assistantPastorId,
     accent: accent ?? this.accent,
     isHeadquarters: isHeadquarters ?? this.isHeadquarters,
+    phone: phone ?? this.phone,
+    email: email ?? this.email,
+    website: website ?? this.website,
   );
   BranchRow copyWithCompanion(BranchesCompanion data) {
     return BranchRow(
@@ -622,6 +714,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       isHeadquarters: data.isHeadquarters.present
           ? data.isHeadquarters.value
           : this.isHeadquarters,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      website: data.website.present ? data.website.value : this.website,
     );
   }
 
@@ -643,7 +738,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           ..write('pastorId: $pastorId, ')
           ..write('assistantPastorId: $assistantPastorId, ')
           ..write('accent: $accent, ')
-          ..write('isHeadquarters: $isHeadquarters')
+          ..write('isHeadquarters: $isHeadquarters, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('website: $website')
           ..write(')'))
         .toString();
   }
@@ -666,6 +764,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     assistantPastorId,
     accent,
     isHeadquarters,
+    phone,
+    email,
+    website,
   );
   @override
   bool operator ==(Object other) =>
@@ -686,7 +787,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           other.pastorId == this.pastorId &&
           other.assistantPastorId == this.assistantPastorId &&
           other.accent == this.accent &&
-          other.isHeadquarters == this.isHeadquarters);
+          other.isHeadquarters == this.isHeadquarters &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.website == this.website);
 }
 
 class BranchesCompanion extends UpdateCompanion<BranchRow> {
@@ -706,6 +810,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
   final Value<String?> assistantPastorId;
   final Value<String> accent;
   final Value<bool> isHeadquarters;
+  final Value<String> phone;
+  final Value<String> email;
+  final Value<String> website;
   final Value<int> rowid;
   const BranchesCompanion({
     this.createdAt = const Value.absent(),
@@ -724,6 +831,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.assistantPastorId = const Value.absent(),
     this.accent = const Value.absent(),
     this.isHeadquarters = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.website = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BranchesCompanion.insert({
@@ -743,6 +853,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.assistantPastorId = const Value.absent(),
     required String accent,
     this.isHeadquarters = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.website = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -770,6 +883,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Expression<String>? assistantPastorId,
     Expression<String>? accent,
     Expression<bool>? isHeadquarters,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<String>? website,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -789,6 +905,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       if (assistantPastorId != null) 'assistant_pastor_id': assistantPastorId,
       if (accent != null) 'accent': accent,
       if (isHeadquarters != null) 'is_headquarters': isHeadquarters,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (website != null) 'website': website,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -810,6 +929,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Value<String?>? assistantPastorId,
     Value<String>? accent,
     Value<bool>? isHeadquarters,
+    Value<String>? phone,
+    Value<String>? email,
+    Value<String>? website,
     Value<int>? rowid,
   }) {
     return BranchesCompanion(
@@ -829,6 +951,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       assistantPastorId: assistantPastorId ?? this.assistantPastorId,
       accent: accent ?? this.accent,
       isHeadquarters: isHeadquarters ?? this.isHeadquarters,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      website: website ?? this.website,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -884,6 +1009,15 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     if (isHeadquarters.present) {
       map['is_headquarters'] = Variable<bool>(isHeadquarters.value);
     }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (website.present) {
+      map['website'] = Variable<String>(website.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -909,6 +1043,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
           ..write('assistantPastorId: $assistantPastorId, ')
           ..write('accent: $accent, ')
           ..write('isHeadquarters: $isHeadquarters, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('website: $website, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -13929,6 +14066,9 @@ typedef $$BranchesTableCreateCompanionBuilder =
       Value<String?> assistantPastorId,
       required String accent,
       Value<bool> isHeadquarters,
+      Value<String> phone,
+      Value<String> email,
+      Value<String> website,
       Value<int> rowid,
     });
 typedef $$BranchesTableUpdateCompanionBuilder =
@@ -13949,6 +14089,9 @@ typedef $$BranchesTableUpdateCompanionBuilder =
       Value<String?> assistantPastorId,
       Value<String> accent,
       Value<bool> isHeadquarters,
+      Value<String> phone,
+      Value<String> email,
+      Value<String> website,
       Value<int> rowid,
     });
 
@@ -14321,6 +14464,21 @@ class $$BranchesTableFilterComposer
 
   ColumnFilters<bool> get isHeadquarters => $composableBuilder(
     column: $table.isHeadquarters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get website => $composableBuilder(
+    column: $table.website,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14788,6 +14946,21 @@ class $$BranchesTableOrderingComposer
     column: $table.isHeadquarters,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BranchesTableAnnotationComposer
@@ -14854,6 +15027,15 @@ class $$BranchesTableAnnotationComposer
     column: $table.isHeadquarters,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get website =>
+      $composableBuilder(column: $table.website, builder: (column) => column);
 
   Expression<T> membersRefs<T extends Object>(
     Expression<T> Function($$MembersTableAnnotationComposer a) f,
@@ -15292,6 +15474,9 @@ class $$BranchesTableTableManager
                 Value<String?> assistantPastorId = const Value.absent(),
                 Value<String> accent = const Value.absent(),
                 Value<bool> isHeadquarters = const Value.absent(),
+                Value<String> phone = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String> website = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BranchesCompanion(
                 createdAt: createdAt,
@@ -15310,6 +15495,9 @@ class $$BranchesTableTableManager
                 assistantPastorId: assistantPastorId,
                 accent: accent,
                 isHeadquarters: isHeadquarters,
+                phone: phone,
+                email: email,
+                website: website,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -15330,6 +15518,9 @@ class $$BranchesTableTableManager
                 Value<String?> assistantPastorId = const Value.absent(),
                 required String accent,
                 Value<bool> isHeadquarters = const Value.absent(),
+                Value<String> phone = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String> website = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BranchesCompanion.insert(
                 createdAt: createdAt,
@@ -15348,6 +15539,9 @@ class $$BranchesTableTableManager
                 assistantPastorId: assistantPastorId,
                 accent: accent,
                 isHeadquarters: isHeadquarters,
+                phone: phone,
+                email: email,
+                website: website,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

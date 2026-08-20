@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/models.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Design tokens for the whole app.
@@ -180,6 +181,20 @@ class AppRadius {
 
 /// Layout breakpoints. The shell switches between a drawer, a rail and a full
 /// sidebar at these widths — the desktop/mobile equivalent of `md:` / `lg:`.
+/// The colour behind an [AccentToken].
+///
+/// Lives here rather than beside any one screen: branches, departments and
+/// ministries all colour themselves from the same six tokens, and three private
+/// copies of this switch had already started to drift.
+Color accentColor(AccentToken token) => switch (token) {
+      AccentToken.blue => AppTheme.info,
+      AccentToken.emerald => AppTheme.success,
+      AccentToken.amber => AppTheme.warning,
+      AccentToken.violet => AppTheme.violet,
+      AccentToken.rose => AppTheme.danger,
+      AccentToken.cyan => AppTheme.cyan,
+    };
+
 /// Heights that must agree across the shell.
 ///
 /// The sidebar header and the top bar each carry a bottom border, and they sit

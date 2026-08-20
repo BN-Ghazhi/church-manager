@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:go_router/go_router.dart';
 
 import '../widgets/collapsible.dart';
-import '../models/models.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -14,15 +13,6 @@ import '../widgets/section_card.dart';
 import '../widgets/stat_card.dart';
 
 /// Accent colours are resolved here so ministry cards stay visually distinct.
-Color _accentColor(AccentToken token) => switch (token) {
-      AccentToken.blue => AppTheme.info,
-      AccentToken.emerald => AppTheme.success,
-      AccentToken.amber => AppTheme.warning,
-      AccentToken.violet => AppTheme.violet,
-      AccentToken.rose => AppTheme.danger,
-      AccentToken.cyan => AppTheme.cyan,
-    };
-
 class MinistriesScreen extends ConsumerWidget {
   const MinistriesScreen({super.key});
 
@@ -112,13 +102,13 @@ class MinistriesScreen extends ConsumerWidget {
                                 width: 34,
                                 height: 34,
                                 decoration: BoxDecoration(
-                                  color: _accentColor(m.accent)
+                                  color: accentColor(m.accent)
                                       .withValues(alpha: 0.12),
                                   borderRadius:
                                       BorderRadius.circular(AppRadius.md),
                                 ),
                                 child: Icon(Icons.hub,
-                                    size: 17, color: _accentColor(m.accent)),
+                                    size: 17, color: accentColor(m.accent)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

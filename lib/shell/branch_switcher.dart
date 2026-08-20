@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../models/models.dart';
 import '../providers/permissions.dart';
 import '../theme/app_theme.dart';
 
@@ -98,15 +97,6 @@ class BranchSwitcher extends ConsumerWidget {
 }
 
 /// Shared accent resolver so branch colours are consistent everywhere.
-Color accentColor(AccentToken token) => switch (token) {
-      AccentToken.blue => AppTheme.info,
-      AccentToken.emerald => AppTheme.success,
-      AccentToken.amber => AppTheme.warning,
-      AccentToken.violet => AppTheme.violet,
-      AccentToken.rose => AppTheme.danger,
-      AccentToken.cyan => AppTheme.cyan,
-    };
-
 class _Pill extends StatelessWidget {
   const _Pill({
     required this.icon,

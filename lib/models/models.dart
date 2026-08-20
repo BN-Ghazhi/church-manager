@@ -839,6 +839,9 @@ class Branch {
     required this.accent,
     this.assistantPastorId,
     this.isHeadquarters = false,
+    this.phone = '',
+    this.email = '',
+    this.website = '',
   });
 
   final String id;
@@ -855,6 +858,11 @@ class Branch {
   final String? assistantPastorId;
   final AccentToken accent;
   final bool isHeadquarters;
+
+  /// Contact details, any of which may be blank.
+  final String phone;
+  final String email;
+  final String website;
 }
 
 /* ---------------------------------------------------------- departments */

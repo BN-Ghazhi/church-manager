@@ -45,6 +45,12 @@ class Branches extends Table with _Timestamps {
   BoolColumn get isHeadquarters =>
       boolean().withDefault(const Constant(false))();
 
+  /// Contact details, so a branch card can offer a call, an email or a map.
+  /// Optional: a church plant meeting in a school hall may have none of them.
+  TextColumn get phone => text().withDefault(const Constant(''))();
+  TextColumn get email => text().withDefault(const Constant(''))();
+  TextColumn get website => text().withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

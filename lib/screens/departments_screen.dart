@@ -6,7 +6,6 @@ import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
-import '../shell/branch_switcher.dart' show accentColor;
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/charts.dart';

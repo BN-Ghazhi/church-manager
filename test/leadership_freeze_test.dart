@@ -86,9 +86,9 @@ void main() {
 
     await tester.tap(find.byTooltip('View').first);
     await settle(tester);
-    expect(find.text('Edit leadership'), findsOneWidget);
+    expect(find.text('Leadership'), findsOneWidget);
 
-    await tester.tap(find.text('Edit leadership'));
+    await tester.tap(find.text('Leadership'));
     await settle(tester);
 
     expect(tester.takeException(), isNull);
@@ -102,7 +102,7 @@ void main() {
     // every click — which is what read as the app freezing.
     expect(find.text('Focus this branch'), findsNothing,
         reason: 'the detail sheet must close, not stack behind the form');
-    expect(find.text('Edit leadership'), findsNothing);
+    expect(find.text('Leadership'), findsNothing);
 
     // And the screen underneath survived — the pop must take the sheet, not the
     // route the sheet was opened from.

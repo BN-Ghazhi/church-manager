@@ -58,6 +58,18 @@ Only the differences from the built-in defaults are stored, so a church that
 never edits permissions keeps getting improvements to the defaults. Super Admin
 always keeps full access — it is the account that fixes everyone else's.
 
+## Editing a branch
+
+The Edit action on a branch row opens the full record — name, short code,
+address, city, region, status, colour, founding date, phone, email and website.
+Leadership is set separately, from the same row's detail view, because a pastor
+must be a member of that branch and the two forms answer different questions.
+
+A branch's colour shows up as its code badge and a stripe down its row, so a long
+list is scannable by campus. Phone, email, website and address are links: they
+open the dialler, mail client, browser or a map. An address with no coordinates
+still works — it becomes a maps search.
+
 ## Your own logo and sign-in background
 
 **Settings → Branding** replaces the sidebar logo and the sign-in background.

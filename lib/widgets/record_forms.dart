@@ -833,13 +833,16 @@ class _AssetFormState extends ConsumerState<_AssetForm> {
 
 /* -------------------------------------------------------------- branches */
 
-Future<void> showBranchForm(BuildContext context) => showDialog<void>(
+Future<void> showBranchForm(BuildContext context, {Branch? branch}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const _BranchForm(),
+      builder: (_) => _BranchForm(branch: branch),
     );
 
 class _BranchForm extends ConsumerStatefulWidget {
-  const _BranchForm();
+  const _BranchForm({this.branch});
+
+  final Branch? branch;
 
   @override
   ConsumerState<_BranchForm> createState() => _BranchFormState();
@@ -850,6 +853,9 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
   final _code = TextEditingController();
   final _address = TextEditingController();
   final _city = TextEditingController();
+  final _phone = TextEditingController();
+  final _email = TextEditingController();
+  final _website = TextEditingController();
   String? _region;
 
   BranchStatus _status = BranchStatus.planting;
@@ -857,8 +863,35 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
   DateTime _established = DateTime.now().toUtc();
 
   @override
+  void initState() {
+    super.initState();
+    final b = widget.branch;
+    if (b == null) return;
+
+    _name.text = b.name;
+    _code.text = b.code;
+    _address.text = b.address.line1;
+    _city.text = b.address.city;
+    _phone.text = b.phone;
+    _email.text = b.email;
+    _website.text = b.website;
+    _region = b.address.state.isEmpty ? null : b.address.state;
+    _status = b.status;
+    _accent = b.accent;
+    _established = b.establishedAt;
+  }
+
+  @override
   void dispose() {
-    for (final c in [_name, _code, _address, _city]) {
+    for (final c in [
+      _name,
+      _code,
+      _address,
+      _city,
+      _phone,
+      _email,
+      _website,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -866,13 +899,19 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.branch != null;
+
     return FormDialog(
-      title: 'Add branch',
-      description:
-          'A new campus. Its pastor and departments are assigned afterwards, '
-          'once members have been added to it.',
-      submitLabel: 'Add branch',
-      successMessage: '${_name.text.trim()} added.',
+      title: editing ? 'Edit ${widget.branch!.name}' : 'Add branch',
+      description: editing
+          ? 'Its leadership is set separately, from the branch row or its '
+              'detail view.'
+          : 'A new campus. Its pastor and departments are assigned afterwards, '
+              'once members have been added to it.',
+      submitLabel: editing ? 'Save changes' : 'Add branch',
+      successMessage: editing
+          ? '${_name.text.trim()} updated.'
+          : '${_name.text.trim()} added.',
       fields: [
         PlainTextField(
           label: 'Name',
@@ -919,11 +958,8 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
           labelOf: (v) => v.label,
           onChanged: (v) => setState(() => _status = v),
         ),
-        EnumField<AccentToken>(
-          label: 'Colour',
-          values: AccentToken.values,
+        AccentField(
           value: _accent,
-          labelOf: (v) => v.name,
           onChanged: (v) => setState(() => _accent = v),
         ),
         DateField(
@@ -932,8 +968,38 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
           lastDate: DateTime.now(),
           onChanged: (v) => setState(() => _established = v),
         ),
+        PhoneField(
+          label: 'Phone',
+          controller: _phone,
+          required: false,
+        ),
+        PlainTextField(
+          label: 'Email',
+          controller: _email,
+          hint: 'accra@kgc.org',
+        ),
+        PlainTextField(
+          label: 'Website',
+          controller: _website,
+          hint: 'kgc.org/accra',
+        ),
       ],
-      onSubmit: () => ref.read(repositoryProvider).createBranch(
+      onSubmit: () => editing
+          ? ref.read(repositoryProvider).updateBranch(
+                widget.branch!.id,
+                name: _name.text.trim(),
+                code: _code.text.trim(),
+                addressLine: _address.text.trim(),
+                city: _city.text.trim(),
+                state: _region ?? '',
+                status: _status,
+                accent: _accent,
+                establishedAt: _established,
+                phone: _phone.text.trim(),
+                email: _email.text.trim(),
+                website: _website.text.trim(),
+              )
+          : ref.read(repositoryProvider).createBranch(
             name: _name.text.trim(),
             code: _code.text.trim(),
             addressLine: _address.text.trim(),
@@ -942,6 +1008,9 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
             status: _status,
             establishedAt: _established,
             accent: _accent,
+            phone: _phone.text.trim(),
+            email: _email.text.trim(),
+            website: _website.text.trim(),
           ),
     );
   }
