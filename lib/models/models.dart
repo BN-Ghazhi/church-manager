@@ -914,6 +914,88 @@ enum LeadershipRole {
       this == LeadershipRole.assistantPastor;
 }
 
+/// Rules for the honorific on a member record.
+///
+/// The field is for church office only — Pastor, Reverend, Deacon, Elder. Civil
+/// titles are refused outright: "Mr", "Mrs" and "Miss" say nothing the record
+/// does not already hold, they go stale when someone marries, and letting them
+/// in turns a field that means "holds office in this church" into a field that
+/// means nothing in particular.
+class MemberTitle {
+  const MemberTitle._();
+
+  /// Offered in the form. Not a restriction — a church may use its own wording.
+  static const suggestions = <String>[
+    'Pastor',
+    'Snr. Pastor',
+    'Associate Pastor',
+    'Assistant Pastor',
+    'Youth Pastor',
+    "Children's Pastor",
+    'Reverend',
+    'Rev. Dr.',
+    'Bishop',
+    'Apostle',
+    'Prophet',
+    'Evangelist',
+    'Deacon',
+    'Deaconess',
+    'Elder',
+    'Minister',
+  ];
+
+  /// Civil and academic titles, refused. Matched whole-word so a legitimate
+  /// title is never caught by a substring — "Minister" contains no "Mr", but a
+  /// naive `contains` check on other spellings easily goes wrong.
+  static const _refused = <String>[
+    'mr', 'mister', 'mrs', 'miss', 'ms', 'mstr', 'master',
+    'sir', 'madam', 'madame', 'dame', 'lord', 'lady',
+    'dr', 'doctor', 'prof', 'professor', 'engr', 'engineer', 'hon',
+    'honourable', 'honorable', 'chief', 'nana', 'alhaji', 'hajia',
+  ];
+
+  /// Words that make a title a church one.
+  ///
+  /// Kept separate from [Member.isPastor], which asks the narrower question of
+  /// whether someone is a *pastor*: a deacon or an elder holds church office
+  /// without being one.
+  static const _officeWords = <String>[
+    'pastor', 'pastoral', 'rev', 'reverend', 'bishop', 'archbishop',
+    'apostle', 'prophet', 'prophetess', 'evangelist', 'minister',
+    'missionary', 'deacon', 'deaconess', 'elder', 'overseer', 'msgr',
+    'monsignor', 'father', 'canon', 'chaplain', 'pst',
+  ];
+
+  /// Null when [value] is acceptable, otherwise why it is not.
+  ///
+  /// Blank is acceptable: most members hold no office.
+  static String? validate(String? value) {
+    final title = (value ?? '').trim();
+    if (title.isEmpty) return null;
+
+    // Split on anything that is not a letter, so "Rev. Dr." is checked as two
+    // words and "Mr." is caught despite the full stop.
+    final words = title
+        .toLowerCase()
+        .split(RegExp(r"[^a-z']+"))
+        .where((w) => w.isNotEmpty)
+        .toList();
+
+    // A church word anywhere makes the title a church one. This is what lets
+    // "Rev. Dr." through: the doctorate is part of how a minister is addressed,
+    // whereas "Dr" alone is an academic title and not church office.
+    if (words.any(_officeWords.contains)) return null;
+
+    for (final word in words) {
+      if (_refused.contains(word)) {
+        return 'This is for church office only — Pastor, Reverend, Deacon, '
+            'Elder. Leave it blank for members who hold none.';
+      }
+    }
+    return null;
+  }
+}
+
 /// One leadership post held by one member.
 ///
 /// Derived rather than stored: a branch already names its pastor, a department

@@ -234,9 +234,21 @@ class ChurchRepository {
           branchId: branchId,
           notes: Value(notes),
           tags: Value(tags.join('|')),
-          title: Value(title.trim()),
+          title: Value(_churchTitle(title)),
         ));
     return id;
+  }
+
+  /// Keeps civil titles out of the title column.
+  ///
+  /// The form refuses them, but the rule belongs here too: the column means
+  /// "holds office in this church", and one caller that skipped the form would
+  /// otherwise fill it with "Mr" and quietly change what the field means. A
+  /// refused value is stored blank rather than throwing — the member is still
+  /// worth saving.
+  static String _churchTitle(String? value) {
+    final title = (value ?? '').trim();
+    return domain.MemberTitle.validate(title) == null ? title : '';
   }
 
   Future<void> updateMember(
@@ -279,7 +291,8 @@ class ChurchRepository {
           city: city == null ? const Value.absent() : Value(city),
           state: state == null ? const Value.absent() : Value(state),
           notes: notes == null ? const Value.absent() : Value(notes),
-          title: title == null ? const Value.absent() : Value(title.trim()),
+          title:
+              title == null ? const Value.absent() : Value(_churchTitle(title)),
           updatedAt: Value(_now),
         ),
       );

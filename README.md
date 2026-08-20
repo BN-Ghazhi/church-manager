@@ -66,6 +66,13 @@ are stored separately:
 - **A title** belongs to the person. Set it on the member record — "Pastor",
   "Associate Pastor", "Youth Pastor", "Reverend". Free text, with the common ones
   suggested, so a branch can have as many pastors as it actually has.
+
+  **Church office only.** "Mr", "Mrs", "Miss", "Dr" and the like are refused: they
+  say nothing the record does not already hold, they go stale when someone
+  marries, and allowing them would turn a field meaning "holds office in this
+  church" into one meaning nothing in particular. Most members leave it blank.
+  A doctorate is fine *alongside* office — "Rev. Dr." is accepted, "Dr." alone is
+  not.
 - **A post** belongs to the branch, department or group. Branch pastor,
   assistant, department head, group leader — one holder each, because there is
   one of each job.

@@ -186,16 +186,15 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                   minItemWidth: 230,
                   maxColumns: 2,
                   children: [
-                    // Free text, with common Ghanaian church titles suggested.
-                    // A fixed list would need a code change every time the
-                    // church recognises a new one.
+                    // Church office only. Free text so a church can use its own
+                    // wording, but civil titles are refused — see MemberTitle.
                     _field(
                       'Title',
                       Autocomplete<String>(
                         optionsBuilder: (value) {
                           final needle = value.text.trim().toLowerCase();
-                          if (needle.isEmpty) return _titleSuggestions;
-                          return _titleSuggestions.where(
+                          if (needle.isEmpty) return MemberTitle.suggestions;
+                          return MemberTitle.suggestions.where(
                               (t) => t.toLowerCase().contains(needle));
                         },
                         onSelected: (v) => _title.text = v,
@@ -211,6 +210,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                               hintText: 'Pastor (leave blank for most members)',
                             ),
                             onChanged: (v) => _title.text = v,
+                            validator: MemberTitle.validate,
                           );
                         },
                       ),
@@ -414,22 +414,3 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
     );
   }
 }
-
-/// Suggested honorifics — a starting point, not a restriction.
-const _titleSuggestions = <String>[
-  'Pastor',
-  'Snr. Pastor',
-  'Associate Pastor',
-  'Assistant Pastor',
-  'Youth Pastor',
-  "Children's Pastor",
-  'Reverend',
-  'Rev. Dr.',
-  'Bishop',
-  'Apostle',
-  'Evangelist',
-  'Deacon',
-  'Deaconess',
-  'Elder',
-  'Minister',
-];

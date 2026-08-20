@@ -146,6 +146,98 @@ void main() {
     }
   });
 
+  group('civil titles are refused', () {
+    test('Mr, Mrs and Miss are rejected, with or without a full stop', () {
+      for (final title in [
+        'Mr',
+        'Mr.',
+        'mr',
+        'MR',
+        'Mrs',
+        'Mrs.',
+        'Miss',
+        'Ms',
+        'Ms.',
+        'Master',
+        'Sir',
+        'Madam',
+        'Dr',
+        'Dr.',
+        'Prof',
+        'Hon',
+        'Chief',
+        'Nana',
+        'Alhaji',
+        'Hajia',
+        'Mr Kofi',
+        'Dr. Mensah',
+      ]) {
+        expect(MemberTitle.validate(title), isNotNull, reason: '"$title"');
+      }
+    });
+
+    test('church titles are accepted', () {
+      for (final title in [
+        ...MemberTitle.suggestions,
+        'Snr Pastor',
+        'Lead Pastor',
+        'Resident Pastor',
+        'Overseer',
+        '',
+        '   ',
+      ]) {
+        expect(MemberTitle.validate(title), isNull, reason: '"$title"');
+      }
+    });
+
+    test('a doctorate is allowed alongside church office, not alone', () {
+      // How a minister is actually addressed, so refusing it would be wrong...
+      expect(MemberTitle.validate('Rev. Dr.'), isNull);
+      expect(MemberTitle.validate('Bishop Dr. Mensah'), isNull);
+      // ...but a doctorate on its own is academic, not church office.
+      expect(MemberTitle.validate('Dr.'), isNotNull);
+      expect(MemberTitle.validate('Dr. Mensah'), isNotNull);
+    });
+
+    test('a legitimate title is not caught by a substring', () {
+      // "Minister" contains no standalone "Mr", and matching must be whole-word
+      // or several real titles would be refused.
+      for (final title in ['Minister', 'Missionary', 'Prophetess', 'Msgr']) {
+        expect(MemberTitle.validate(title), isNull, reason: '"$title"');
+      }
+    });
+
+    test('the repository stores a refused title as blank', () async {
+      // The form refuses these, but the rule has to hold for any caller.
+      final id = await repo.createMember(
+        branchId: branchId,
+        firstName: 'Kwesi',
+        lastName: 'Appiah',
+        gender: Gender.male,
+        dateOfBirth: DateTime.utc(1985, 1, 1),
+        maritalStatus: MaritalStatus.married,
+        status: MemberStatus.active,
+        isBaptized: true,
+        title: 'Mr',
+      );
+
+      final member =
+          (await repo.watchMembers().first).firstWhere((m) => m.id == id);
+      expect(member.title, isEmpty,
+          reason: 'a civil title must not reach the column');
+      expect(member.displayName, 'Kwesi Appiah');
+    });
+
+    test('a refused title on update leaves the column blank', () async {
+      final id = await pastor('Pastor');
+      await repo.updateMember(id, title: 'Mrs');
+
+      final member =
+          (await repo.watchMembers().first).firstWhere((m) => m.id == id);
+      expect(member.title, isEmpty);
+    });
+  });
+
   test('an untitled member is not a pastor and has no honorific', () async {
     await fx.member(branchId: branchId);
     await settle();

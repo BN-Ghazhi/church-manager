@@ -340,12 +340,23 @@ server-side (§4, item 5).
 Conflating any two of these breaks the church's actual structure, so they are
 kept apart deliberately:
 
-- **Title** — `Member.title`, free text. An honorific the person carries. A
-  branch may have a senior pastor, two associates and a youth pastor; all four
-  are pastors and only the first leads anything. `Member.isPastor` matches on the
-  text rather than an enum, because churches word these differently ("Snr.
-  Pastor", "Rev. Dr.", "Apostle") and a fixed list would need a code change every
-  time one is added.
+- **Title** — `Member.title`, free text but **church office only**. An honorific
+  the person carries. A branch may have a senior pastor, two associates and a
+  youth pastor; all four are pastors and only the first leads anything.
+  `Member.isPastor` matches on the text rather than an enum, because churches word
+  these differently ("Snr. Pastor", "Rev. Dr.", "Apostle") and a fixed list would
+  need a code change every time one is added.
+
+  `MemberTitle.validate` refuses civil and academic titles — Mr, Mrs, Miss, Dr,
+  Prof, Chief, Nana. They duplicate what the record already holds, go stale on
+  marriage, and admitting them would make the field mean nothing in particular.
+  Matching is whole-word, because "Minister" contains no standalone "Mr" and a
+  substring check would refuse several real titles. A church word anywhere in the
+  string wins, which is what lets "Rev. Dr." through while refusing "Dr." alone —
+  the doctorate is part of how a minister is addressed. The rule is applied in the
+  repository as well as the form, so a caller that skips the form cannot quietly
+  change what the column means; a refused value is stored blank rather than
+  throwing, since the member is still worth saving.
 - **Post** — a column on the branch, department or group. One holder per job, so
   it lives on the thing being led (§2.10).
 - **Account** — a `StaffUser` with a role in the permission matrix. Most pastors
