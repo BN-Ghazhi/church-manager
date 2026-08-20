@@ -300,11 +300,11 @@ class BranchesScreen extends ConsumerWidget {
         'Total giving': Fmt.currency(giving),
       }),
     ],
-    actions: [
+    actions: (close) => [
       if (canEdit)
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showBranchLeadershipForm(context, branch: branch);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),
@@ -313,7 +313,7 @@ class BranchesScreen extends ConsumerWidget {
       FilledButton.icon(
         onPressed: () {
           ref.read(selectedBranchProvider.notifier).select(branch.id);
-          Navigator.of(context).pop();
+          close();
           showLocalSuccess(context, 'Now viewing ${branch.name}.');
         },
         icon: const Icon(Icons.filter_center_focus, size: 16),

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
-import '../config/permissions.dart' show permissionMatrix;
+import '../config/features.dart';
 import '../models/models.dart';
 import 'auth.dart';
 import 'repository.dart';
@@ -112,15 +112,29 @@ final isConsolidatedViewProvider = Provider<bool>(
 
 /* ----------------------------------------------------------- capability */
 
-final _matrixByModule = {
-  for (final entry in permissionMatrix) entry.module: entry,
-};
+/// The effective matrix keyed by module, rebuilt when a role is edited.
+///
+/// Watches [permissionMatrixProvider] rather than the built-in constant, so an
+/// edit on the Permissions tab takes effect immediately — including hiding or
+/// revealing sidebar entries — instead of only after a restart.
+final _matrixByModuleProvider =
+    Provider<Map<String, ModulePermission>>((ref) => {
+          for (final entry in ref.watch(permissionMatrixProvider))
+            entry.module: entry,
+        });
 
 /// The current user's permission level for a named module.
+///
+/// A switched-off module reports [PermissionLevel.none] to everyone, Super Admin
+/// included. Doing it here rather than in each screen means one rule covers the
+/// sidebar, the dashboard cards, every action button and the permission matrix
+/// — there is no screen left that can quietly still show it.
 final permissionForProvider = Provider.family<PermissionLevel, String>(
   (ref, module) {
+    if (Features.isHidden(module)) return PermissionLevel.none;
     final role = ref.watch(currentUserProvider).role;
-    return _matrixByModule[module]?.levelFor(role) ?? PermissionLevel.none;
+    return ref.watch(_matrixByModuleProvider)[module]?.levelFor(role) ??
+        PermissionLevel.none;
   },
 );
 

@@ -11,6 +11,7 @@ import 'providers/permissions.dart';
 import 'screens/sign_in_screen.dart';
 
 import 'config/app_config.dart';
+import 'config/features.dart';
 import 'providers/repository.dart';
 import 'screens/access_screen.dart';
 import 'screens/assets_screen.dart';
@@ -82,6 +83,11 @@ GoRouter _buildRouter(Ref ref) => GoRouter(
     // Typing the URL must not bypass the sidebar's own filtering.
     if (state.matchedLocation == '/branches' &&
         !ref.read(canSeeAllBranchesProvider)) {
+      return '/dashboard';
+    }
+
+    // Switched-off modules are unreachable, not merely unlisted.
+    if (Features.hiddenRoutes.contains(state.matchedLocation)) {
       return '/dashboard';
     }
     return null;

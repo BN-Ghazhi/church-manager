@@ -124,17 +124,28 @@ class CollapsibleSection extends ConsumerWidget {
 /// Preferred over a full page for "click a row to see more": the list stays
 /// visible behind it, so closing the detail returns you to exactly where you
 /// were in a long table rather than to the top of it.
+///
+/// [actions] is a *builder* taking a `close` callback rather than a plain list.
+/// This is deliberate. An action that opens a form has to shut the sheet first,
+/// and a caller building the buttons inline captures the calling screen's
+/// context, not the dialog's — so `Navigator.of(context).pop()` dismissed a
+/// route behind the sheet and left the sheet itself on top of the new form. The
+/// second modal barrier then swallowed every click, which read as the app
+/// freezing. Handing the caller a `close` it cannot get wrong removes the
+/// mistake rather than documenting it.
 Future<T?> showDetailSheet<T>(
   BuildContext context, {
   required String title,
   String? subtitle,
   required List<Widget> children,
-  List<Widget> actions = const [],
+  List<Widget> Function(VoidCallback close)? actions,
   double width = 560,
 }) {
   return showDialog<T>(
     context: context,
     builder: (context) {
+      final built = actions?.call(() => Navigator.of(context).pop()) ??
+          const <Widget>[];
       final theme = Theme.of(context);
       final scheme = theme.colorScheme;
 
@@ -195,7 +206,7 @@ Future<T?> showDetailSheet<T>(
                   ),
                 ),
               ),
-              if (actions.isNotEmpty) ...[
+              if (built.isNotEmpty) ...[
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
@@ -206,7 +217,7 @@ Future<T?> showDetailSheet<T>(
                     alignment: WrapAlignment.end,
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
-                    children: actions,
+                    children: built,
                   ),
                 ),
               ],

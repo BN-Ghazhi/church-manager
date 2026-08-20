@@ -71,6 +71,11 @@ final settingsStreamProvider = StreamProvider<Map<String, String>>(
   (ref) => ref.watch(repositoryProvider).watchSettings(),
 );
 
+/// Saved settings as a plain map, empty while loading.
+final settingsProvider = Provider<Map<String, String>>(
+  (ref) => ref.watch(settingsStreamProvider).valueOrNull ?? const {},
+);
+
 /// Reads a stream provider's current value, or an empty list while it loads.
 ///
 /// Screens stay synchronous this way: they were written against plain lists,
@@ -327,8 +332,15 @@ final staffUsersProvider = Provider<List<StaffUser>>((ref) {
   }).toList() ?? const [];
 });
 
-final permissionMatrixProvider =
-    Provider<List<ModulePermission>>((ref) => ops.permissionMatrix);
+/// The effective permission matrix — built-in defaults plus any saved edits.
+final permissionMatrixStreamProvider =
+    StreamProvider<List<ModulePermission>>(
+  (ref) => ref.watch(repositoryProvider).watchPermissionMatrix(),
+);
+
+final permissionMatrixProvider = Provider<List<ModulePermission>>((ref) =>
+    ref.watch(permissionMatrixStreamProvider).valueOrNull ??
+    ops.permissionMatrix);
 
 /* -------------------------------------------------------------- dashboard */
 

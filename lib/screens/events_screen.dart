@@ -341,11 +341,11 @@ void _showEvent(BuildContext context, WidgetRef ref, ChurchEvent event) {
         'Description': event.description,
       }),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Events')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showEventForm(context, event: event);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),

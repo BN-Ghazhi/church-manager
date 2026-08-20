@@ -376,6 +376,28 @@ class SmallGroups extends Table with _Timestamps {
   Set<Column> get primaryKey => {id};
 }
 
+/// Changes to what a role may do, overriding the built-in matrix.
+///
+/// Only the differences are stored. `lib/config/permissions.dart` remains the
+/// starting point every church gets, and a row here says "this role's access to
+/// this module is not the default any more". Storing the whole matrix instead
+/// would freeze today's module list into the database, so adding a module later
+/// would leave existing installs with a silent gap.
+@DataClassName('PermissionOverrideRow')
+class PermissionOverrides extends Table with _Timestamps {
+  /// The module name as it appears in the matrix, e.g. 'Attendance'.
+  TextColumn get module => text()();
+
+  /// The [UserRole] name, e.g. 'branchAdmin'.
+  TextColumn get role => text()();
+
+  /// The [PermissionLevel] name, e.g. 'read'.
+  TextColumn get level => text()();
+
+  @override
+  Set<Column> get primaryKey => {module, role};
+}
+
 /// Key/value store for church profile and preference toggles, so Settings
 /// persists without a migration every time a new switch is added.
 @DataClassName('SettingRow')

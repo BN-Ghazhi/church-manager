@@ -327,11 +327,11 @@ void _showService(
       const SizedBox(height: AppSpacing.lg),
       _Attendees(attendanceId: record.id),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Attendance')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showServiceRecordForm(context, record: record);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),

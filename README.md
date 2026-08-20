@@ -31,6 +31,34 @@ Each install has its own database, so a branch working on its own laptop is
 See **[BRANCH-DATA.md](BRANCH-DATA.md)** for the three options and what each
 costs.
 
+## Switched-off modules
+
+Giving, Communication and Volunteers are hidden everywhere — sidebar, screens,
+dashboard and permission matrix. They are hidden, not deleted: remove a line
+from `hiddenModules` in `lib/config/features.dart` to bring one back.
+
+## Editing roles and permissions
+
+**Roles & Access** has three tabs, each a table with view, edit and delete:
+
+- **Users** — accounts, their role, scope and status. Edit changes the name,
+  username, role, branch, department, status and cross-branch access; a separate
+  action sets a new password.
+- **Roles** — the ten roles and what each reaches. Editing a role sets its access
+  to every module at once.
+- **Permissions** — one row per module. Editing a row sets what each role may do
+  there.
+
+Only the differences from the built-in defaults are stored, so a church that
+never edits permissions keeps getting improvements to the defaults. Super Admin
+always keeps full access — it is the account that fixes everyone else's.
+
+## Your own logo and sign-in background
+
+**Settings → Branding** replaces the sidebar logo and the sign-in background.
+The chosen file is copied into the app's own storage, so moving or deleting the
+original does not break it.
+
 ## Who can see what
 
 Only **Super Admin** sees other branches. Everyone else — including Senior
@@ -141,9 +169,9 @@ flutter create --platforms=android,ios .
 | `/attendance` | Service records, trends and member check-in |
 | `/ministries` | Departments and small groups with leaders and capacity |
 | `/events` | Calendar, registrations, weekly schedule, announcements |
-| `/volunteers` | Serving rotas by Sunday and coverage by role |
-| `/finance` | Donations, expenses, pledges and fund analysis |
-| `/communication` | Email, SMS, WhatsApp and push campaigns |
+| `/volunteers` | Serving rotas by Sunday and coverage by role *(hidden)* |
+| `/finance` | Donations, expenses, pledges and fund analysis *(hidden)* |
+| `/communication` | Email, SMS, WhatsApp and push campaigns *(hidden)* |
 | `/care` | Pastoral care queue with priority and assignment |
 | `/discipleship` | Courses, enrolment and the growth pathway |
 | `/assets` | Equipment register with condition and value |

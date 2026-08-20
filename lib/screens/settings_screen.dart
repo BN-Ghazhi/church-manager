@@ -5,6 +5,7 @@ import '../config/app_config.dart';
 import '../config/ghana.dart';
 import '../providers/auth.dart';
 import '../providers/repository.dart';
+import '../providers/branding.dart';
 import '../theme/app_theme.dart';
 import '../widgets/feedback.dart';
 import '../widgets/page_header.dart';
@@ -70,7 +71,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
-    final stored = ref.watch(settingsStreamProvider).valueOrNull ?? const {};
+    final stored = ref.watch(settingsProvider);
 
     return PageBody(
       children: [
@@ -185,6 +186,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+        SectionCard(
+          title: 'Branding',
+          description:
+              'Your own logo and sign-in background. Images are copied into the '
+              'app, so moving or deleting the original does not affect them.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final which in BrandImage.values) ...[
+                _BrandImagePicker(which: which),
+                if (which != BrandImage.values.last)
+                  const SizedBox(height: AppSpacing.md),
+              ],
+            ],
           ),
         ),
         SectionCard(
@@ -430,6 +447,100 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         TextFormField(controller: controller),
+      ],
+    );
+  }
+}
+
+/// One image slot: a preview, a button to replace it and one to clear it.
+class _BrandImagePicker extends ConsumerStatefulWidget {
+  const _BrandImagePicker({required this.which});
+
+  final BrandImage which;
+
+  @override
+  ConsumerState<_BrandImagePicker> createState() => _BrandImagePickerState();
+}
+
+class _BrandImagePickerState extends ConsumerState<_BrandImagePicker> {
+  bool _busy = false;
+
+  Future<void> _run(Future<void> Function() action, String done) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (!mounted) return;
+      showLocalSuccess(context, done);
+    } catch (error) {
+      if (!mounted) return;
+      showLocalSuccess(context, '$error'.replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final image = ref.watch(brandImageProvider(widget.which));
+
+    return Row(
+      children: [
+        Container(
+          width: 84,
+          height: 56,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: image == null
+              ? Icon(Icons.image_outlined,
+                  size: 20, color: scheme.onSurfaceVariant)
+              : Image.file(image, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.which.label,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                image == null
+                    ? 'Using the built-in default'
+                    : 'PNG, JPG, WebP, GIF or BMP · up to 8 MB',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        if (image != null)
+          IconButton(
+            tooltip: 'Use the default again',
+            onPressed: _busy
+                ? null
+                : () => _run(
+                      () => clearBrandImage(ref, widget.which),
+                      '${widget.which.label} reset to the default.',
+                    ),
+            icon: const Icon(Icons.restart_alt, size: 18),
+          ),
+        const SizedBox(width: AppSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: _busy
+              ? null
+              : () => _run(
+                    () => pickBrandImage(ref, widget.which),
+                    '${widget.which.label} updated.',
+                  ),
+          icon: const Icon(Icons.upload_outlined, size: 16),
+          label: Text(image == null ? 'Upload' : 'Replace'),
+        ),
       ],
     );
   }

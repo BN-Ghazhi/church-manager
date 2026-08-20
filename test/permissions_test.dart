@@ -1,4 +1,5 @@
 import 'package:churchms/config/permissions.dart' show permissionMatrix;
+import 'package:churchms/config/features.dart';
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
@@ -160,13 +161,31 @@ void main() {
   });
 
   group('module permissions', () {
-    test('finance is hidden from a branch admin, open to branch finance', () async {
-      final admin = await containerFor(userWithRole(UserRole.branchAdmin));
+    test('a switched-off module is closed to everyone, super admin included',
+        () async {
+      // Giving, Communication and Volunteers are hidden for now. The check sits
+      // in permissionForProvider, so one rule covers the sidebar, every screen
+      // and every action button — there is no route left that shows them.
+      final admin = await containerFor(userWithRole(UserRole.superAdmin));
       final finance = await containerFor(userWithRole(UserRole.branchFinance));
 
-      expect(admin.read(canViewProvider('Giving & Finance')), isFalse);
-      expect(finance.read(canViewProvider('Giving & Finance')), isTrue);
-      expect(finance.read(canEditProvider('Giving & Finance')), isTrue);
+      for (final module in Features.hiddenModules) {
+        expect(admin.read(canViewProvider(module)), isFalse,
+            reason: '$module is switched off');
+        expect(admin.read(canEditProvider(module)), isFalse);
+        expect(finance.read(canViewProvider(module)), isFalse);
+      }
+    });
+
+    test('a module that is not switched off still follows the role matrix',
+        () async {
+      final admin = await containerFor(userWithRole(UserRole.branchAdmin));
+      final volunteer = await containerFor(userWithRole(UserRole.volunteer));
+
+      expect(admin.read(canViewProvider('Attendance')), isTrue);
+      expect(admin.read(canEditProvider('Attendance')), isTrue);
+      expect(volunteer.read(canViewProvider('Attendance')), isTrue);
+      expect(volunteer.read(canEditProvider('Attendance')), isFalse);
     });
 
     test('only a super admin may edit roles', () async {

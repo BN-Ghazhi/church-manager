@@ -180,6 +180,18 @@ class AppRadius {
 
 /// Layout breakpoints. The shell switches between a drawer, a rail and a full
 /// sidebar at these widths — the desktop/mobile equivalent of `md:` / `lg:`.
+/// Heights that must agree across the shell.
+///
+/// The sidebar header and the top bar each carry a bottom border, and they sit
+/// side by side — so if their heights differ by even a few pixels the two rules
+/// do not meet and the seam is visible across the top of the window. Both read
+/// this constant rather than each hard-coding a number that later drifts.
+class AppMetrics {
+  const AppMetrics._();
+
+  static const headerHeight = 60.0;
+}
+
 class AppBreakpoints {
   const AppBreakpoints._();
 

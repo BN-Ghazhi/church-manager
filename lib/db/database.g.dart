@@ -13229,6 +13229,422 @@ class SmallGroupsCompanion extends UpdateCompanion<SmallGroupRow> {
   }
 }
 
+class $PermissionOverridesTable extends PermissionOverrides
+    with TableInfo<$PermissionOverridesTable, PermissionOverrideRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PermissionOverridesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _moduleMeta = const VerificationMeta('module');
+  @override
+  late final GeneratedColumn<String> module = GeneratedColumn<String>(
+    'module',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+    'level',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    createdAt,
+    updatedAt,
+    deletedAt,
+    module,
+    role,
+    level,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'permission_overrides';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PermissionOverrideRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('module')) {
+      context.handle(
+        _moduleMeta,
+        module.isAcceptableOrUnknown(data['module']!, _moduleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_moduleMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_levelMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {module, role};
+  @override
+  PermissionOverrideRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PermissionOverrideRow(
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      module: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}module'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level'],
+      )!,
+    );
+  }
+
+  @override
+  $PermissionOverridesTable createAlias(String alias) {
+    return $PermissionOverridesTable(attachedDatabase, alias);
+  }
+}
+
+class PermissionOverrideRow extends DataClass
+    implements Insertable<PermissionOverrideRow> {
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// Set instead of deleting the row. All queries filter these out.
+  final DateTime? deletedAt;
+
+  /// The module name as it appears in the matrix, e.g. 'Attendance'.
+  final String module;
+
+  /// The [UserRole] name, e.g. 'branchAdmin'.
+  final String role;
+
+  /// The [PermissionLevel] name, e.g. 'read'.
+  final String level;
+  const PermissionOverrideRow({
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.module,
+    required this.role,
+    required this.level,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['module'] = Variable<String>(module);
+    map['role'] = Variable<String>(role);
+    map['level'] = Variable<String>(level);
+    return map;
+  }
+
+  PermissionOverridesCompanion toCompanion(bool nullToAbsent) {
+    return PermissionOverridesCompanion(
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      module: Value(module),
+      role: Value(role),
+      level: Value(level),
+    );
+  }
+
+  factory PermissionOverrideRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PermissionOverrideRow(
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      module: serializer.fromJson<String>(json['module']),
+      role: serializer.fromJson<String>(json['role']),
+      level: serializer.fromJson<String>(json['level']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'module': serializer.toJson<String>(module),
+      'role': serializer.toJson<String>(role),
+      'level': serializer.toJson<String>(level),
+    };
+  }
+
+  PermissionOverrideRow copyWith({
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? module,
+    String? role,
+    String? level,
+  }) => PermissionOverrideRow(
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    module: module ?? this.module,
+    role: role ?? this.role,
+    level: level ?? this.level,
+  );
+  PermissionOverrideRow copyWithCompanion(PermissionOverridesCompanion data) {
+    return PermissionOverrideRow(
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      module: data.module.present ? data.module.value : this.module,
+      role: data.role.present ? data.role.value : this.role,
+      level: data.level.present ? data.level.value : this.level,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PermissionOverrideRow(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('module: $module, ')
+          ..write('role: $role, ')
+          ..write('level: $level')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(createdAt, updatedAt, deletedAt, module, role, level);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionOverrideRow &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.module == this.module &&
+          other.role == this.role &&
+          other.level == this.level);
+}
+
+class PermissionOverridesCompanion
+    extends UpdateCompanion<PermissionOverrideRow> {
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> module;
+  final Value<String> role;
+  final Value<String> level;
+  final Value<int> rowid;
+  const PermissionOverridesCompanion({
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.module = const Value.absent(),
+    this.role = const Value.absent(),
+    this.level = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PermissionOverridesCompanion.insert({
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String module,
+    required String role,
+    required String level,
+    this.rowid = const Value.absent(),
+  }) : module = Value(module),
+       role = Value(role),
+       level = Value(level);
+  static Insertable<PermissionOverrideRow> custom({
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? module,
+    Expression<String>? role,
+    Expression<String>? level,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (module != null) 'module': module,
+      if (role != null) 'role': role,
+      if (level != null) 'level': level,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PermissionOverridesCompanion copyWith({
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? module,
+    Value<String>? role,
+    Value<String>? level,
+    Value<int>? rowid,
+  }) {
+    return PermissionOverridesCompanion(
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      module: module ?? this.module,
+      role: role ?? this.role,
+      level: level ?? this.level,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (module.present) {
+      map['module'] = Variable<String>(module.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PermissionOverridesCompanion(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('module: $module, ')
+          ..write('role: $role, ')
+          ..write('level: $level, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SettingsTable extends Settings
     with TableInfo<$SettingsTable, SettingRow> {
   @override
@@ -13463,6 +13879,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AnnouncementsTable announcements = $AnnouncementsTable(this);
   late final $CoursesTable courses = $CoursesTable(this);
   late final $SmallGroupsTable smallGroups = $SmallGroupsTable(this);
+  late final $PermissionOverridesTable permissionOverrides =
+      $PermissionOverridesTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -13488,6 +13906,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     announcements,
     courses,
     smallGroups,
+    permissionOverrides,
     settings,
   ];
 }
@@ -25458,6 +25877,241 @@ typedef $$SmallGroupsTableProcessedTableManager =
       SmallGroupRow,
       PrefetchHooks Function({bool branchId})
     >;
+typedef $$PermissionOverridesTableCreateCompanionBuilder =
+    PermissionOverridesCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      required String module,
+      required String role,
+      required String level,
+      Value<int> rowid,
+    });
+typedef $$PermissionOverridesTableUpdateCompanionBuilder =
+    PermissionOverridesCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> module,
+      Value<String> role,
+      Value<String> level,
+      Value<int> rowid,
+    });
+
+class $$PermissionOverridesTableFilterComposer
+    extends Composer<_$AppDatabase, $PermissionOverridesTable> {
+  $$PermissionOverridesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get module => $composableBuilder(
+    column: $table.module,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PermissionOverridesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PermissionOverridesTable> {
+  $$PermissionOverridesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get module => $composableBuilder(
+    column: $table.module,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PermissionOverridesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PermissionOverridesTable> {
+  $$PermissionOverridesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get module =>
+      $composableBuilder(column: $table.module, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+}
+
+class $$PermissionOverridesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PermissionOverridesTable,
+          PermissionOverrideRow,
+          $$PermissionOverridesTableFilterComposer,
+          $$PermissionOverridesTableOrderingComposer,
+          $$PermissionOverridesTableAnnotationComposer,
+          $$PermissionOverridesTableCreateCompanionBuilder,
+          $$PermissionOverridesTableUpdateCompanionBuilder,
+          (
+            PermissionOverrideRow,
+            BaseReferences<
+              _$AppDatabase,
+              $PermissionOverridesTable,
+              PermissionOverrideRow
+            >,
+          ),
+          PermissionOverrideRow,
+          PrefetchHooks Function()
+        > {
+  $$PermissionOverridesTableTableManager(
+    _$AppDatabase db,
+    $PermissionOverridesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PermissionOverridesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PermissionOverridesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PermissionOverridesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> module = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> level = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PermissionOverridesCompanion(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                module: module,
+                role: role,
+                level: level,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String module,
+                required String role,
+                required String level,
+                Value<int> rowid = const Value.absent(),
+              }) => PermissionOverridesCompanion.insert(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                module: module,
+                role: role,
+                level: level,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PermissionOverridesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PermissionOverridesTable,
+      PermissionOverrideRow,
+      $$PermissionOverridesTableFilterComposer,
+      $$PermissionOverridesTableOrderingComposer,
+      $$PermissionOverridesTableAnnotationComposer,
+      $$PermissionOverridesTableCreateCompanionBuilder,
+      $$PermissionOverridesTableUpdateCompanionBuilder,
+      (
+        PermissionOverrideRow,
+        BaseReferences<
+          _$AppDatabase,
+          $PermissionOverridesTable,
+          PermissionOverrideRow
+        >,
+      ),
+      PermissionOverrideRow,
+      PrefetchHooks Function()
+    >;
 typedef $$SettingsTableCreateCompanionBuilder =
     SettingsCompanion Function({
       required String key,
@@ -25636,6 +26290,8 @@ class $AppDatabaseManager {
       $$CoursesTableTableManager(_db, _db.courses);
   $$SmallGroupsTableTableManager get smallGroups =>
       $$SmallGroupsTableTableManager(_db, _db.smallGroups);
+  $$PermissionOverridesTableTableManager get permissionOverrides =>
+      $$PermissionOverridesTableTableManager(_db, _db.permissionOverrides);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
 }

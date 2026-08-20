@@ -221,11 +221,11 @@ void _showAsset(BuildContext context, WidgetRef ref, AssetItem asset) {
         'Branch': ref.read(branchNameProvider(asset.branchId)),
       }),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Assets')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showAssetForm(context, asset: asset);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),

@@ -34,6 +34,7 @@ part 'database.g.dart';
     Announcements,
     Courses,
     SmallGroups,
+    PermissionOverrides,
     Settings,
   ],
 )
@@ -60,8 +61,9 @@ class AppDatabase extends _$AppDatabase {
   bool _autoSeed = true;
 
   /// 2 — accounts sign in with a username rather than an email address.
+  /// 3 — role permissions are editable, so their overrides need somewhere to live.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -83,6 +85,13 @@ class AppDatabase extends _$AppDatabase {
               "THEN substr(username, 1, instr(username, '@') - 1) "
               "ELSE username END)",
             );
+          }
+
+          // v2 → v3: a new table only, so existing rows are untouched. An
+          // install with no overrides behaves exactly as before — the built-in
+          // matrix is still the answer until someone edits a role.
+          if (from < 3) {
+            await m.createTable(permissionOverrides);
           }
         },
         beforeOpen: (details) async {

@@ -424,11 +424,11 @@ void _showDonation(BuildContext context, WidgetRef ref, Donation donation) {
         'Branch': ref.read(branchNameProvider(donation.branchId)),
       }),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Finance')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showDonationForm(context, donation: donation);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),
@@ -472,11 +472,11 @@ void _showExpense(BuildContext context, WidgetRef ref, ExpenseRecord expense) {
         'Branch': ref.read(branchNameProvider(expense.branchId)),
       }),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Finance')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showExpenseForm(context, expense: expense);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),

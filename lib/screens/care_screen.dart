@@ -218,11 +218,11 @@ void _showCare(BuildContext context, WidgetRef ref, CareRequest request) {
         'Summary': request.summary,
       }),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Care')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showCareForm(context, request: request);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../config/app_config.dart';
 import '../config/navigation.dart';
-import '../config/permissions.dart' show permissionMatrix;
+import '../providers/branding.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
@@ -145,7 +145,10 @@ class _SidebarContent extends ConsumerWidget {
             // The Branches screen is about other campuses by definition, so it
             // is gated on cross-branch sight rather than on a module level.
             if (i.route == '/branches' && !canSeeAllBranches) return false;
-            return permissionMatrix
+            // Reads the effective matrix so an edited role changes the sidebar
+            // straight away.
+            return ref
+                .watch(permissionMatrixProvider)
                 .where((m) => m.module == i.module)
                 .every((m) => m.levelFor(role).canRead);
           }).toList(),
@@ -157,19 +160,30 @@ class _SidebarContent extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Brand
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
+          //
+          // Fixed to the same height as the top bar so the two bottom borders
+          // line up into one continuous rule.
+          SizedBox(
+            height: AppMetrics.headerHeight,
+            child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: scheme.primary,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Icon(Icons.church, size: 18, color: scheme.onPrimary),
-                ),
+                Builder(builder: (context) {
+                  final logo = ref.watch(brandImageProvider(BrandImage.logo));
+                  return Container(
+                    width: 34,
+                    height: 34,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: logo == null ? scheme.primary : null,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: logo == null
+                        ? Icon(Icons.church, size: 18, color: scheme.onPrimary)
+                        : Image.file(logo, fit: BoxFit.cover),
+                  );
+                }),
                 if (!collapsed) ...[
                   const SizedBox(width: AppSpacing.sm + 2),
                   Expanded(
@@ -177,12 +191,12 @@ class _SidebarContent extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Wraps to a second line rather than clipping: a church
-                        // name is not something to truncate, and "Kingdom Grace
-                        // Chapel" does not fit the sidebar on one line.
+                        // One line inside a fixed-height header. Two lines plus
+                        // the tagline cannot fit 60px, and growing the header
+                        // breaks its alignment with the top bar.
                         Text(
                           ChurchConfig.name,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w700,
@@ -201,6 +215,7 @@ class _SidebarContent extends ConsumerWidget {
                   ),
                 ],
               ],
+            ),
             ),
           ),
           const Divider(height: 1),
@@ -419,11 +434,13 @@ class _TopBar extends ConsumerWidget {
     final mode = ref.watch(themeModeProvider);
 
     return Container(
-      height: 60,
+      height: AppMetrics.headerHeight,
       decoration: BoxDecoration(
         color: scheme.surface,
         border: Border(
-          bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+          // Matches DividerThemeData, so the top bar's rule and the sidebar
+          // header's divider read as a single line across the window.
+          bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),

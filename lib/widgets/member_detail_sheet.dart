@@ -42,11 +42,11 @@ void showMemberDetail(BuildContext context, WidgetRef ref, Member member) {
       const SizedBox(height: AppSpacing.lg),
       _AttendanceBlock(member: member),
     ],
-    actions: [
+    actions: (close) => [
       if (ref.read(canEditProvider('Members')))
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            close();
             showMemberForm(context, member: member);
           },
           icon: const Icon(Icons.edit_outlined, size: 16),
@@ -54,7 +54,7 @@ void showMemberDetail(BuildContext context, WidgetRef ref, Member member) {
         ),
       FilledButton.icon(
         onPressed: () {
-          Navigator.of(context).pop();
+          close();
           context.go('/members/${member.id}');
         },
         icon: const Icon(Icons.open_in_new, size: 16),

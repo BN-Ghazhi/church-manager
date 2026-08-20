@@ -300,13 +300,45 @@ can grant it to any branch-level account from Roles & Access and revoke it
 again; department heads and volunteers can never receive it. This is why the
 church's own structure can change without editing the role enum.
 
+**Permissions are editable, and only the differences are stored.**
+`permissionMatrix` in `lib/config/permissions.dart` stays the default every
+church starts from; a row in `permission_overrides` says "this role's access to
+this module is not the default any more". `watchPermissionMatrix()` merges the
+two, so a church that never touches permissions keeps getting improvements to
+the defaults while one that has customised a role keeps its choice. Storing the
+whole matrix instead would freeze today's module list into the database, and a
+module added later would land as a silent gap on existing installs.
+
+Two things are deliberately not editable. Super Admin's access is fixed — it is
+the account that grants everyone else theirs, so a mistake there could lock every
+administrator out of the screen that fixes it, and with no server nobody could
+undo it. And nobody can edit their own role or cross-branch access, for the same
+reason at account level.
+
+**Switched-off modules** are enforced in one place. `Features.hiddenModules`
+(`lib/config/features.dart`) is checked inside `permissionForProvider`, which
+every `canView`/`canEdit` call and the sidebar already funnel through — so one
+rule covers navigation, screens, action buttons and the permission matrix, with
+no screen left that can quietly still show a hidden module. The router refuses
+the routes too, so a typed URL cannot reach one. They are hidden, not deleted:
+the screens and their tests still work, and re-enabling one is removing a line.
+
 Every branch-scoped query funnels through one gate, `activeBranchIdsProvider`.
 A screen cannot accidentally read another branch's data, because it never picks
 the branch filter itself. Note that client-side scoping is a convenience, not a
 security boundary — when a server arrives, the same filter must be enforced
 server-side (§4, item 5).
 
-### 2.9 Persistence
+### 2.9 Branding
+
+The sidebar logo and the sign-in background can be replaced from Settings. The
+chosen file is **copied into the app's own storage** rather than referenced where
+it sits — a path into Downloads or onto a USB stick breaks the moment the file
+moves, and the app would silently lose its logo. Only the copy's path lives in
+the settings table, and a missing file falls back to the built-in default rather
+than rendering a broken box, because the database can outlive the image.
+
+### 2.10 Persistence
 
 One SQLite file, via Drift, in the platform's application-support directory. No
 server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
@@ -329,7 +361,7 @@ Each install has its **own** database — a branch laptop is not visible to
 headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
 three options and what each costs.
 
-### 2.10 Notable decisions and their reasons
+### 2.11 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through

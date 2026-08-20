@@ -65,7 +65,7 @@ void main() {
         .customSelect('PRAGMA user_version')
         .getSingle()
         .then((r) => r.data.values.first);
-    expect(version, 2);
+    expect(version, 3);
 
     // The local part of the address became the username, lower-cased.
     final user = await repo.signIn('admin', 'church2026');
@@ -88,6 +88,6 @@ void main() {
         .customSelect('PRAGMA user_version')
         .getSingle()
         .then((r) => r.data.values.first);
-    expect(version, 2);
+    expect(version, 3);
   });
 }

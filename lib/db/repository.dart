@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../config/permissions.dart' as config;
 import '../models/models.dart' as domain;
 import 'database.dart';
 import 'password.dart';
@@ -712,6 +713,39 @@ class ChurchRepository {
         ),
       );
 
+  /// Edits the account itself — the name shown in the app and the sign-in name.
+  ///
+  /// The username is lower-cased and checked for a clash before writing, so two
+  /// accounts can never end up with sign-in names that differ only in case.
+  /// Returns false if the username is taken, so the form can say so.
+  Future<bool> updateUserIdentity(
+    String id, {
+    String? name,
+    String? username,
+  }) async {
+    if (username != null) {
+      final wanted = username.trim().toLowerCase();
+      final clash = await (db.select(db.userAccounts)
+            ..where((t) =>
+                t.username.equals(wanted) &
+                t.id.equals(id).not() &
+                t.deletedAt.isNull()))
+          .getSingleOrNull();
+      if (clash != null) return false;
+    }
+
+    await (db.update(db.userAccounts)..where((t) => t.id.equals(id))).write(
+      UserAccountsCompanion(
+        name: name == null ? const Value.absent() : Value(name.trim()),
+        username: username == null
+            ? const Value.absent()
+            : Value(username.trim().toLowerCase()),
+        updatedAt: Value(_now),
+      ),
+    );
+    return true;
+  }
+
   Future<void> changePassword(String userId, String newPassword) async {
     final salt = Password.generateSalt();
     await (db.update(db.userAccounts)..where((t) => t.id.equals(userId))).write(
@@ -1235,6 +1269,64 @@ class ChurchRepository {
   }
 
   /* ------------------------------------------------------------ settings */
+
+  /* ----------------------------------------------- role permissions */
+
+  /// The effective matrix: the built-in defaults with any saved edits applied.
+  ///
+  /// Reading it this way means a church that never touches permissions keeps
+  /// getting improvements to the defaults, while one that has customised a role
+  /// keeps its choice.
+  Stream<List<domain.ModulePermission>> watchPermissionMatrix() =>
+      db.select(db.permissionOverrides).watch().map((rows) {
+        final overrides = <String, Map<domain.UserRole, domain.PermissionLevel>>{};
+        for (final row in rows) {
+          final role = domain.UserRole.values
+              .where((r) => r.name == row.role)
+              .firstOrNull;
+          final level = domain.PermissionLevel.values
+              .where((l) => l.name == row.level)
+              .firstOrNull;
+          // Unknown names are ignored rather than thrown on: a role or level
+          // removed from the code should not stop the app from opening.
+          if (role == null || level == null) continue;
+          overrides.putIfAbsent(row.module, () => {})[role] = level;
+        }
+
+        return [
+          for (final base in config.permissionMatrix)
+            domain.ModulePermission(
+              module: base.module,
+              roles: {...base.roles, ...?overrides[base.module]},
+            ),
+        ];
+      });
+
+  /// Changes what one role may do in one module.
+  ///
+  /// Super Admin is not editable. It is the account that grants everyone else
+  /// their access, so a mistake here could lock every administrator out of the
+  /// screen that fixes it — and with no server, nobody could undo it.
+  Future<void> setPermission({
+    required String module,
+    required domain.UserRole role,
+    required domain.PermissionLevel level,
+  }) async {
+    if (role == domain.UserRole.superAdmin) return;
+
+    await db.into(db.permissionOverrides).insertOnConflictUpdate(
+          PermissionOverridesCompanion.insert(
+            module: module,
+            role: role.name,
+            level: level.name,
+            updatedAt: Value(_now),
+          ),
+        );
+  }
+
+  /// Drops every customisation, returning to the built-in matrix.
+  Future<void> resetPermissions() =>
+      db.delete(db.permissionOverrides).go();
 
   Stream<Map<String, String>> watchSettings() =>
       db.select(db.settings).watch().map(

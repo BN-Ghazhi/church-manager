@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../config/app_config.dart';
 import '../db/seeder.dart';
+import '../providers/branding.dart';
 import '../providers/auth.dart';
 import '../theme/app_theme.dart';
 
@@ -64,8 +66,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
+    final background = ref.watch(brandImageProvider(BrandImage.signInBackground));
+    final logo = ref.watch(brandImageProvider(BrandImage.logo));
+
     return Scaffold(
-      body: Center(
+      body: DecoratedBox(
+        // The church's own photograph when they have uploaded one; otherwise a
+        // plain surface. Dimmed so the form stays readable over any image.
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          image: background == null
+              ? null
+              : DecorationImage(
+                  image: FileImage(background),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    scheme.surface.withValues(alpha: 0.72),
+                    BlendMode.srcOver,
+                  ),
+                ),
+        ),
+        child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: ConstrainedBox(
@@ -80,16 +101,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     Container(
                       width: 56,
                       height: 56,
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: scheme.primary,
+                        color: logo == null ? scheme.primary : null,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
-                      child: Icon(Icons.church,
-                          size: 28, color: scheme.onPrimary),
+                      child: logo == null
+                          ? Icon(Icons.church,
+                              size: 28, color: scheme.onPrimary)
+                          : Image.file(logo, fit: BoxFit.cover),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      'Grace Chapel',
+                      ChurchConfig.name,
                       style: theme.textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
@@ -212,6 +236,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
