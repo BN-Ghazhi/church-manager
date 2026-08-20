@@ -1,4 +1,3 @@
-import 'package:churchms/config/features.dart';
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/repository.dart';
 import 'package:churchms/db/seeder.dart';
@@ -88,15 +87,9 @@ void main() {
     );
   });
 
-  test('the switched-off modules are the three the church asked for', () {
-    expect(Features.hiddenModules, {
-      'Giving & Finance',
-      'Communication',
-      'Volunteers',
-    });
-    expect(Features.isHidden('Attendance'), isFalse);
-    expect(Features.isHidden('Volunteers'), isTrue);
-  });
+  // Which modules are switched off, and that hiding covers every route into
+  // them, is asserted in hidden_modules_test.dart — listing them again here
+  // would just be a second place to forget to update.
 
   test('a username clash is refused rather than silently applied', () async {
     await Seeder(db).seedFirstRun();

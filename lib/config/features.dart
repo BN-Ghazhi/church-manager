@@ -14,6 +14,8 @@ class Features {
     'Giving & Finance',
     'Communication',
     'Volunteers',
+    'Pastoral Care',
+    'Assets',
   };
 
   static bool isHidden(String module) => hiddenModules.contains(module);
@@ -23,5 +25,7 @@ class Features {
     '/finance',
     '/communication',
     '/volunteers',
+    '/care',
+    '/assets',
   };
 }

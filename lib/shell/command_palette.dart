@@ -60,7 +60,10 @@ class _CommandPaletteState extends ConsumerState<_CommandPalette> {
     final pages = [
       for (final section in navigation)
         for (final item in section.items)
-          if (!(item.route == '/branches' && !canSeeAllBranches))
+          // Same two gates the sidebar applies. Without the permission check the
+          // palette was a way to reach a page the sidebar deliberately hides.
+          if (!(item.route == '/branches' && !canSeeAllBranches) &&
+              ref.watch(canViewProvider(item.module)))
             _Result(item.title, item.description, item.route, item.icon,
                 section.label),
     ];

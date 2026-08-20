@@ -15,19 +15,30 @@ import '../widgets/section_card.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/status_badge.dart';
 
-const _kpiIcons = [
-  Icons.people_outline,
-  Icons.how_to_reg_outlined,
-  Icons.payments_outlined,
-  Icons.hub_outlined,
-];
+/// Keyed by the stat's id, not its position: cards belonging to switched-off
+/// modules are filtered out, and a positional list would then hand the wrong
+/// icon to every card after the gap.
+const _kpiIcons = <String, IconData>{
+  'members': Icons.people_outline,
+  'attendance': Icons.how_to_reg_outlined,
+  'giving': Icons.payments_outlined,
+  'departments': Icons.hub_outlined,
+};
+
+/// Cards that only make sense while their module is switched on.
+const _kpiModules = <String, String>{
+  'giving': 'Giving & Finance',
+};
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(kpiStatsProvider);
+    final stats = ref.watch(kpiStatsProvider).where((s) {
+      final module = _kpiModules[s.id];
+      return module == null || ref.watch(canViewProvider(module));
+    }).toList();
     final events = ref.watch(upcomingEventsProvider).take(5).toList();
     final care = ref
         .watch(careRequestsProvider)
@@ -48,7 +59,7 @@ class DashboardScreen extends ConsumerWidget {
           title: 'Welcome back, ${user.name.split(' ').first}',
           description: consolidated
               ? 'Consolidated across $scope. Use the branch switcher to focus one campus.'
-              : 'How $scope is doing this week across attendance, giving and care.',
+              : 'How $scope is doing this week across people, attendance and departments.',
           actions: [
             OutlinedButton.icon(
               onPressed: () => context.go('/reports'),
@@ -67,8 +78,11 @@ class DashboardScreen extends ConsumerWidget {
           minItemWidth: 250,
           maxColumns: 4,
           children: [
-            for (var i = 0; i < stats.length; i++)
-              StatCard.fromStat(stats[i], icon: _kpiIcons[i]),
+            for (final stat in stats)
+              StatCard.fromStat(
+                stat,
+                icon: _kpiIcons[stat.id] ?? Icons.insights_outlined,
+              ),
           ],
         ),
 
@@ -93,36 +107,38 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        SplitRow(
-          primary: SectionCard(
-            title: 'Income and expenses',
-            description: 'Twelve-month view of total giving against expenditure.',
-            action: TextButton(
-              onPressed: () => context.go('/finance'),
-              child: const Text('Open finance'),
+        // Belongs to a switched-off module, so it goes when the module does.
+        if (ref.watch(canViewProvider('Giving & Finance')))
+          SplitRow(
+            primary: SectionCard(
+              title: 'Income and expenses',
+              description: 'Twelve-month view of total giving against expenditure.',
+              action: TextButton(
+                onPressed: () => context.go('/finance'),
+                child: const Text('Open finance'),
+              ),
+              child: TrendChart(
+                data: ref.watch(financeTrendProvider),
+                valueLabel: 'Income',
+                compareLabel: 'Expenses',
+                format: ValueFormat.currency,
+              ),
             ),
-            child: TrendChart(
-              data: ref.watch(financeTrendProvider),
-              valueLabel: 'Income',
-              compareLabel: 'Expenses',
-              format: ValueFormat.currency,
-            ),
-          ),
-          secondary: consolidated
-              ? SectionCard(
-                  title: 'Attendance by branch',
-                  description: 'Last Sunday, every campus in view.',
-                  child: CategoryBarChart(
-                    data: ref.watch(attendanceByBranchProvider),
-                    height: 230,
+            secondary: consolidated
+                ? SectionCard(
+                    title: 'Attendance by branch',
+                    description: 'Last Sunday, every campus in view.',
+                    child: CategoryBarChart(
+                      data: ref.watch(attendanceByBranchProvider),
+                      height: 230,
+                    ),
+                  )
+                : SectionCard(
+                    title: 'Gender split',
+                    description: 'Across this branch.',
+                    child: DonutChart(data: ref.watch(genderSplitProvider)),
                   ),
-                )
-              : SectionCard(
-                  title: 'Gender split',
-                  description: 'Across this branch.',
-                  child: DonutChart(data: ref.watch(genderSplitProvider)),
-                ),
-        ),
+          ),
 
         ResponsiveGrid(
           minItemWidth: 340,
@@ -159,116 +175,120 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
 
-        SplitRow(
-          primaryFlex: 1,
-          secondaryFlex: 1,
-          primary: SectionCard(
-            title: 'Care requests needing attention',
-            description: 'Open and in-progress pastoral care.',
-            action: TextButton(
-              onPressed: () => context.go('/care'),
-              child: const Text('All requests'),
-            ),
-            child: Column(
-              children: [
-                for (final request in care)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm + 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                ref.watch(memberNameProvider(request.memberId)),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              Text(
-                                '${request.type.label} · ${request.summary}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                              ),
-                            ],
+        // Pastoral Care and Volunteers are both switched off; when either
+        // returns this row comes back with it.
+        if (ref.watch(canViewProvider('Pastoral Care')) ||
+            ref.watch(canViewProvider('Volunteers')))
+          SplitRow(
+            primaryFlex: 1,
+            secondaryFlex: 1,
+            primary: SectionCard(
+              title: 'Care requests needing attention',
+              description: 'Open and in-progress pastoral care.',
+              action: TextButton(
+                onPressed: () => context.go('/care'),
+                child: const Text('All requests'),
+              ),
+              child: Column(
+                children: [
+                  for (final request in care)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm + 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  ref.watch(memberNameProvider(request.memberId)),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                  '${request.type.label} · ${request.summary}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        StatusBadge.of(request.priority),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          secondary: SectionCard(
-            title: 'Rota gaps',
-            description: 'Serving slots still unfilled for coming services.',
-            action: TextButton(
-              onPressed: () => context.go('/volunteers'),
-              child: const Text('Manage rota'),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final slot in openSlots)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm + 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                slot.role.label,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              Text(
-                                '${slot.serviceName} · ${Fmt.date(slot.date)}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        StatusBadge.of(slot.status),
-                      ],
-                    ),
-                  ),
-                const Divider(),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  '$filled of ${slots.length} slots filled across the next four Sundays.',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          const SizedBox(width: AppSpacing.sm),
+                          StatusBadge.of(request.priority),
+                        ],
                       ),
-                ),
-              ],
+                    ),
+                ],
+              ),
+            ),
+            secondary: SectionCard(
+              title: 'Rota gaps',
+              description: 'Serving slots still unfilled for coming services.',
+              action: TextButton(
+                onPressed: () => context.go('/volunteers'),
+                child: const Text('Manage rota'),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final slot in openSlots)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm + 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  slot.role.label,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                  '${slot.serviceName} · ${Fmt.date(slot.date)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          StatusBadge.of(slot.status),
+                        ],
+                      ),
+                    ),
+                  const Divider(),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    '$filled of ${slots.length} slots filled across the next four Sundays.',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }

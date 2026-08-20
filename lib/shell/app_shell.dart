@@ -134,7 +134,6 @@ class _SidebarContent extends ConsumerWidget {
 
     // Destinations the signed-in role cannot read are hidden entirely, so the
     // sidebar never lists a dead end.
-    final role = ref.watch(currentUserProvider).role;
     final canSeeAllBranches = ref.watch(canSeeAllBranchesProvider);
 
     final visibleSections = [
@@ -145,12 +144,11 @@ class _SidebarContent extends ConsumerWidget {
             // The Branches screen is about other campuses by definition, so it
             // is gated on cross-branch sight rather than on a module level.
             if (i.route == '/branches' && !canSeeAllBranches) return false;
-            // Reads the effective matrix so an edited role changes the sidebar
-            // straight away.
-            return ref
-                .watch(permissionMatrixProvider)
-                .where((m) => m.module == i.module)
-                .every((m) => m.levelFor(role).canRead);
+            // Goes through canViewProvider rather than reading the matrix
+            // directly: that is where switched-off modules are enforced, and
+            // reading the matrix here bypassed it — which is how hidden
+            // modules were still appearing in the sidebar.
+            return ref.watch(canViewProvider(i.module));
           }).toList(),
         ),
     ].where((s) => s.items.isNotEmpty).toList();

@@ -316,12 +316,18 @@ undo it. And nobody can edit their own role or cross-branch access, for the same
 reason at account level.
 
 **Switched-off modules** are enforced in one place. `Features.hiddenModules`
-(`lib/config/features.dart`) is checked inside `permissionForProvider`, which
-every `canView`/`canEdit` call and the sidebar already funnel through — so one
-rule covers navigation, screens, action buttons and the permission matrix, with
-no screen left that can quietly still show a hidden module. The router refuses
-the routes too, so a typed URL cannot reach one. They are hidden, not deleted:
-the screens and their tests still work, and re-enabling one is removing a line.
+(`lib/config/features.dart`) is checked inside `permissionForProvider`, so every
+`canView`/`canEdit` call inherits it, and the router refuses the matching routes
+so a typed URL cannot reach one either. They are hidden, not deleted: the
+screens and their tests still work, and re-enabling one is removing a line.
+
+"One place" only holds if everything asks through that gate, and the first
+version of this did not: the sidebar and the command palette both read the
+permission matrix directly, so hidden modules kept appearing in the navigation.
+Both now call `canViewProvider`. `test/hidden_modules_test.dart` asserts the
+outcome rather than the mechanism — that no visible destination belongs to a
+hidden module, and that an edited permission cannot outrank the switch — so the
+next bypass fails a test instead of shipping.
 
 Every branch-scoped query funnels through one gate, `activeBranchIdsProvider`.
 A screen cannot accidentally read another branch's data, because it never picks

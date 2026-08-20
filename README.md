@@ -33,9 +33,14 @@ costs.
 
 ## Switched-off modules
 
-Giving, Communication and Volunteers are hidden everywhere — sidebar, screens,
-dashboard and permission matrix. They are hidden, not deleted: remove a line
-from `hiddenModules` in `lib/config/features.dart` to bring one back.
+Giving & Finance, Communication, Volunteers, Pastoral Care and Assets are hidden
+everywhere — sidebar, command palette, dashboard, routes and the permission
+matrix. They are hidden, not deleted: remove a line from `hiddenModules` in
+`lib/config/features.dart` to bring one back.
+
+What stays visible: Dashboard (with Reports), Branches, Members, Attendance,
+Departments, Groups & Ministries, Discipleship, Events, Roles & Access and
+Settings.
 
 ## Editing roles and permissions
 
@@ -172,9 +177,9 @@ flutter create --platforms=android,ios .
 | `/volunteers` | Serving rotas by Sunday and coverage by role *(hidden)* |
 | `/finance` | Donations, expenses, pledges and fund analysis *(hidden)* |
 | `/communication` | Email, SMS, WhatsApp and push campaigns *(hidden)* |
-| `/care` | Pastoral care queue with priority and assignment |
+| `/care` | Pastoral care queue with priority and assignment *(hidden)* |
 | `/discipleship` | Courses, enrolment and the growth pathway |
-| `/assets` | Equipment register with condition and value |
+| `/assets` | Equipment register with condition and value *(hidden)* |
 | `/access` | Users, roles and the module permission matrix |
 | `/settings` | Church profile, services, appearance, integrations |
 
