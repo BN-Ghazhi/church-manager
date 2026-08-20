@@ -335,7 +335,21 @@ the branch filter itself. Note that client-side scoping is a convenience, not a
 security boundary — when a server arrives, the same filter must be enforced
 server-side (§4, item 5).
 
-### 2.9 Stat cards that lead somewhere
+### 2.9 Leadership is derived, not stored
+
+A branch already names its pastor, a department its head, a group its leader.
+`leadershipPostsProvider` assembles the Pastors tab from those columns instead of
+a `pastors` table, because a second record of the same fact can disagree with the
+first — someone replaced as a department head but still listed as one. Appointing
+a leader writes to the record that owns the post, so the list changes with it.
+
+`LeadershipRole` is ordered by seniority, which is what lets a person's posts and
+the table itself sort sensibly without a separate rank column.
+
+`setGroupLeader` was added alongside `createSmallGroup`: groups had a table and a
+`leaderId` column but no way to create one, so that post could never be filled.
+
+### 2.10 Stat cards that lead somewhere
 
 `StatCard.accent` and `StatCard.onTap` are optional and belong together. Colour
 is not decoration here — it is the affordance that says the tile is pressable,
@@ -349,7 +363,7 @@ Deliberately not applied everywhere. A row of six identically-washed cards is
 louder without being clearer, so the tint marks the numbers a screen exists to
 lead with.
 
-### 2.10 Colour and links
+### 2.11 Colour and links
 
 `accentColor` (`lib/theme/app_theme.dart`) is the single mapping from the six
 `AccentToken` values to real colours. It had been copy-pasted into three screens
@@ -364,7 +378,7 @@ read as a relative path and fails silently; an address becomes a maps search, so
 it works without coordinates. A link that cannot be handled says so rather than
 doing nothing, because a dead tap reads as a broken app.
 
-### 2.11 Branding
+### 2.12 Branding
 
 The sidebar logo and the sign-in background can be replaced from Settings. The
 chosen file is **copied into the app's own storage** rather than referenced where
@@ -373,7 +387,7 @@ moves, and the app would silently lose its logo. Only the copy's path lives in
 the settings table, and a missing file falls back to the built-in default rather
 than rendering a broken box, because the database can outlive the image.
 
-### 2.12 Persistence
+### 2.13 Persistence
 
 One SQLite file, via Drift, in the platform's application-support directory. No
 server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
@@ -396,7 +410,7 @@ Each install has its **own** database — a branch laptop is not visible to
 headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
 three options and what each costs.
 
-### 2.13 Notable decisions and their reasons
+### 2.14 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through

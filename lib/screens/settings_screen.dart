@@ -56,12 +56,16 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen>
+    with SingleTickerProviderStateMixin {
   /// Church-profile fields, created lazily from whatever is stored.
   final _controllers = <String, TextEditingController>{};
 
+  late final TabController _tabs = TabController(length: 4, vsync: this);
+
   @override
   void dispose() {
+    _tabs.dispose();
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -73,280 +77,333 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final mode = ref.watch(themeModeProvider);
     final stored = ref.watch(settingsProvider);
 
-    return PageBody(
+    return Column(
       children: [
-        PageHeader(
-          title: 'Settings',
-          description:
-              'Church profile, service schedule, integrations and system preferences.',
-          actions: [
-            FilledButton.icon(
-              onPressed: () async {
-                await ref.read(repositoryProvider).saveSettings({
-                  for (final entry in _controllers.entries)
-                    entry.key: entry.value.text.trim(),
-                });
-                if (!context.mounted) return;
-                showLocalSuccess(context, 'Church details saved.');
-              },
-              icon: const Icon(Icons.save_outlined, size: 17),
-              label: const Text('Save changes'),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
             ),
-          ],
-        ),
-        SectionCard(
-          title: 'Church details',
-          description:
-              'Appears on statements, receipts and outgoing messages.',
-          child: ResponsiveGrid(
-            minItemWidth: 260,
-            maxColumns: 2,
-            children: [
-              _field('Church name', 'church.name', stored, ChurchConfig.name),
-              _field('Legal name', 'church.legalName', stored,
-                  ChurchConfig.legalName),
-              _field('Lead pastor', 'church.pastor', stored,
-                  ChurchConfig.pastor),
-              _field('Year founded', 'church.founded', stored,
-                  ChurchConfig.founded),
-              _field('Email', 'church.email', stored, ChurchConfig.email),
-              _field('Phone', 'church.phone', stored, ChurchConfig.phone),
-              _field('Website', 'church.website', stored,
-                  ChurchConfig.website),
-              _field('Address', 'church.address', stored,
-                  ChurchConfig.addressLine),
-              _field('City or town', 'church.city', stored, ChurchConfig.city),
-              _regionField('church.state', stored),
-              _field('Country', 'church.country', stored, Ghana.country),
-              _field('Currency', 'church.currency', stored,
-                  ChurchConfig.currency),
-              _field('Timezone', 'church.timezone', stored,
-                  ChurchConfig.timezone),
-            ],
-          ),
-        ),
-        SplitRow(
-          primaryFlex: 1,
-          secondaryFlex: 1,
-          primary: SectionCard(
-            title: 'Weekly service schedule',
-            description:
-                'Recurring services that generate attendance records.',
-            child: Column(
-              children: [
-                for (final s in ChurchConfig.services)
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.church_outlined,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    title: Text(s.name,
-                        style: Theme.of(context).textTheme.bodyMedium),
-                    subtitle: Text(s.venue,
-                        style: Theme.of(context).textTheme.labelSmall),
-                    trailing: Text('${s.day} · ${s.time}',
-                        style: Theme.of(context).textTheme.labelSmall),
-                  ),
-              ],
-            ),
-          ),
-          secondary: SectionCard(
-            title: 'Appearance',
-            description: 'How the console looks on this device.',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(
-                        value: ThemeMode.light,
-                        label: Text('Light'),
-                        icon: Icon(Icons.light_mode_outlined, size: 16)),
-                    ButtonSegment(
-                        value: ThemeMode.dark,
-                        label: Text('Dark'),
-                        icon: Icon(Icons.dark_mode_outlined, size: 16)),
-                    ButtonSegment(
-                        value: ThemeMode.system,
-                        label: Text('System'),
-                        icon: Icon(Icons.computer_outlined, size: 16)),
-                  ],
-                  selected: {mode},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (s) =>
-                      ref.read(themeModeProvider.notifier).set(s.first),
-                ),
-                const SizedBox(height: AppSpacing.sm + 4),
-                Text(
-                  'Theme is remembered for this session; it will persist once settings are stored.',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
+            child: TabBar(
+              controller: _tabs,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              dividerColor: Colors.transparent,
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor:
+                  Theme.of(context).colorScheme.onSurfaceVariant,
+              indicatorSize: TabBarIndicatorSize.label,
+              tabs: const [
+                Tab(icon: Icon(Icons.church_outlined, size: 18), text: 'Church'),
+                Tab(
+                    icon: Icon(Icons.palette_outlined, size: 18),
+                    text: 'Appearance'),
+                Tab(
+                    icon: Icon(Icons.tune_outlined, size: 18),
+                    text: 'Preferences'),
+                Tab(icon: Icon(Icons.storage_outlined, size: 18), text: 'Data'),
               ],
             ),
           ),
         ),
-        SectionCard(
-          title: 'Branding',
-          description:
-              'Your own logo and sign-in background. Images are copied into the '
-              'app, so moving or deleting the original does not affect them.',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final which in BrandImage.values) ...[
-                _BrandImagePicker(which: which),
-                if (which != BrandImage.values.last)
-                  const SizedBox(height: AppSpacing.md),
-              ],
-            ],
-          ),
+        Divider(
+          height: 1,
+          color:
+              Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.6),
         ),
-        SectionCard(
-          title: 'System preferences',
-          description: 'Notifications, automation and privacy defaults.',
-          child: Column(
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
             children: [
-              for (final p in _preferences)
-                SwitchListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  value: (stored['pref.${p.id}'] ?? '${p.defaultOn}') == 'true',
-                  onChanged: (v) async {
-                    await ref
-                        .read(repositoryProvider)
-                        .saveSetting('pref.${p.id}', '$v');
-                    if (!context.mounted) return;
-                    showLocalSuccess(
-                      context,
-                      '${p.label} ${v ? 'enabled' : 'disabled'}.',
-                    );
-                  },
-                  title: Text(p.label,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  subtitle: Text(p.description,
-                      style: Theme.of(context).textTheme.labelSmall),
-                ),
-            ],
-          ),
-        ),
-        SectionCard(
-          title: 'Connected services',
-          description: 'Payments, messaging and calendar providers.',
-          child: ResponsiveGrid(
-            minItemWidth: 300,
-            maxColumns: 3,
-            children: [
-              for (final (name, purpose, connected) in _integrations)
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm + 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outlineVariant
-                          .withValues(alpha: 0.7),
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.extension_outlined,
-                          size: 18,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant),
-                      const SizedBox(width: AppSpacing.sm + 2),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(fontWeight: FontWeight.w600)),
-                            Text(purpose,
-                                style:
-                                    Theme.of(context).textTheme.labelSmall),
+              // Church — the profile and the service schedule that depends on it.
+              PageBody(children: [
+                PageHeader(
+                          title: 'Settings',
+                          description:
+                              'Church profile, service schedule, integrations and system preferences.',
+                          actions: [
+                            FilledButton.icon(
+                              onPressed: () async {
+                                await ref.read(repositoryProvider).saveSettings({
+                                  for (final entry in _controllers.entries)
+                                    entry.key: entry.value.text.trim(),
+                                });
+                                if (!context.mounted) return;
+                                showLocalSuccess(context, 'Church details saved.');
+                              },
+                              icon: const Icon(Icons.save_outlined, size: 17),
+                              label: const Text('Save changes'),
+                            ),
                           ],
                         ),
-                      ),
-                      Chip(
-                        label: Text(connected ? 'Connected' : 'Available'),
-                        visualDensity: VisualDensity.compact,
-                        backgroundColor: connected
-                            ? AppTheme.success.withValues(alpha: 0.12)
-                            : Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                        labelStyle: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(
-                              color: connected
-                                  ? AppTheme.success
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                            ),
-                      ),
+                SectionCard(
+                          title: 'Church details',
+                          description:
+                              'Appears on statements, receipts and outgoing messages.',
+                          child: ResponsiveGrid(
+                            minItemWidth: 260,
+                            maxColumns: 2,
+                            children: [
+                              _field('Church name', 'church.name', stored, ChurchConfig.name),
+                              _field('Legal name', 'church.legalName', stored,
+                                  ChurchConfig.legalName),
+                              _field('Lead pastor', 'church.pastor', stored,
+                                  ChurchConfig.pastor),
+                              _field('Year founded', 'church.founded', stored,
+                                  ChurchConfig.founded),
+                              _field('Email', 'church.email', stored, ChurchConfig.email),
+                              _field('Phone', 'church.phone', stored, ChurchConfig.phone),
+                              _field('Website', 'church.website', stored,
+                                  ChurchConfig.website),
+                              _field('Address', 'church.address', stored,
+                                  ChurchConfig.addressLine),
+                              _field('City or town', 'church.city', stored, ChurchConfig.city),
+                              _regionField('church.state', stored),
+                              _field('Country', 'church.country', stored, Ghana.country),
+                              _field('Currency', 'church.currency', stored,
+                                  ChurchConfig.currency),
+                              _field('Timezone', 'church.timezone', stored,
+                                  ChurchConfig.timezone),
+                            ],
+                          ),
+                        ),
+                SectionCard(
+                  title: 'Weekly service schedule',
+                  description:
+                      'Recurring services that generate attendance records.',
+                  child: Column(
+                    children: [
+                      for (final s in ChurchConfig.services)
+                        ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.church_outlined,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                          title: Text(s.name,
+                              style: Theme.of(context).textTheme.bodyMedium),
+                          subtitle: Text(s.venue,
+                              style: Theme.of(context).textTheme.labelSmall),
+                          trailing: Text('${s.day} · ${s.time}',
+                              style: Theme.of(context).textTheme.labelSmall),
+                        ),
                     ],
                   ),
                 ),
+              ]),
+              // Appearance — how it looks, and the images that decide that.
+              PageBody(children: [
+                SectionCard(
+                            title: 'Appearance',
+                            description: 'How the console looks on this device.',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SegmentedButton<ThemeMode>(
+                                  segments: const [
+                                    ButtonSegment(
+                                        value: ThemeMode.light,
+                                        label: Text('Light'),
+                                        icon: Icon(Icons.light_mode_outlined, size: 16)),
+                                    ButtonSegment(
+                                        value: ThemeMode.dark,
+                                        label: Text('Dark'),
+                                        icon: Icon(Icons.dark_mode_outlined, size: 16)),
+                                    ButtonSegment(
+                                        value: ThemeMode.system,
+                                        label: Text('System'),
+                                        icon: Icon(Icons.computer_outlined, size: 16)),
+                                  ],
+                                  selected: {mode},
+                                  showSelectedIcon: false,
+                                  onSelectionChanged: (s) =>
+                                      ref.read(themeModeProvider.notifier).set(s.first),
+                                ),
+                                const SizedBox(height: AppSpacing.sm + 4),
+                                Text(
+                                  'Theme is remembered for this session; it will persist once settings are stored.',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                SectionCard(
+                          title: 'Branding',
+                          description:
+                              'Your own logo and sign-in background. Images are copied into the '
+                              'app, so moving or deleting the original does not affect them.',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final which in BrandImage.values) ...[
+                                _BrandImagePicker(which: which),
+                                if (which != BrandImage.values.last)
+                                  const SizedBox(height: AppSpacing.md),
+                              ],
+                            ],
+                          ),
+                        ),
+              ]),
+              // Preferences — behaviour and anything it talks to.
+              PageBody(children: [
+                SectionCard(
+                          title: 'System preferences',
+                          description: 'Notifications, automation and privacy defaults.',
+                          child: Column(
+                            children: [
+                              for (final p in _preferences)
+                                SwitchListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  value: (stored['pref.${p.id}'] ?? '${p.defaultOn}') == 'true',
+                                  onChanged: (v) async {
+                                    await ref
+                                        .read(repositoryProvider)
+                                        .saveSetting('pref.${p.id}', '$v');
+                                    if (!context.mounted) return;
+                                    showLocalSuccess(
+                                      context,
+                                      '${p.label} ${v ? 'enabled' : 'disabled'}.',
+                                    );
+                                  },
+                                  title: Text(p.label,
+                                      style: Theme.of(context).textTheme.bodyMedium),
+                                  subtitle: Text(p.description,
+                                      style: Theme.of(context).textTheme.labelSmall),
+                                ),
+                            ],
+                          ),
+                        ),
+                SectionCard(
+                          title: 'Connected services',
+                          description: 'Payments, messaging and calendar providers.',
+                          child: ResponsiveGrid(
+                            minItemWidth: 300,
+                            maxColumns: 3,
+                            children: [
+                              for (final (name, purpose, connected) in _integrations)
+                                Container(
+                                  padding: const EdgeInsets.all(AppSpacing.sm + 4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.extension_outlined,
+                                          size: 18,
+                                          color:
+                                              Theme.of(context).colorScheme.onSurfaceVariant),
+                                      const SizedBox(width: AppSpacing.sm + 2),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(fontWeight: FontWeight.w600)),
+                                            Text(purpose,
+                                                style:
+                                                    Theme.of(context).textTheme.labelSmall),
+                                          ],
+                                        ),
+                                      ),
+                                      Chip(
+                                        label: Text(connected ? 'Connected' : 'Available'),
+                                        visualDensity: VisualDensity.compact,
+                                        backgroundColor: connected
+                                            ? AppTheme.success.withValues(alpha: 0.12)
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                        labelStyle: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: connected
+                                                  ? AppTheme.success
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+              ]),
+              // Data — where records live, and how to erase them.
+              PageBody(children: [
+                SectionCard(
+                          title: 'Data',
+                          description:
+                              'This app stores everything in its own database on this computer. '
+                              'No server is involved and it works offline.',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.storage_outlined,
+                                      size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: AppSpacing.sm + 2),
+                                  Expanded(
+                                    child: Text(
+                                      'Everything you add or edit is saved immediately and is '
+                                      'still there when you reopen the app.',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              OutlinedButton.icon(
+                                onPressed: () => _confirmReset(context, ref),
+                                icon: const Icon(Icons.restart_alt, size: 17),
+                                label: const Text('Erase all records'),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                'Returns the app to a fresh install: every member, department '
+                                'and record is deleted, and user accounts are replaced by the '
+                                'default admin — so any password you set is reset too. This '
+                                'cannot be undone.',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                          child: Text(
+                            '${AppInfo.name} v${AppInfo.version}',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+              ]),
             ],
-          ),
-        ),
-        SectionCard(
-          title: 'Data',
-          description:
-              'This app stores everything in its own database on this computer. '
-              'No server is involved and it works offline.',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.storage_outlined,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  const SizedBox(width: AppSpacing.sm + 2),
-                  Expanded(
-                    child: Text(
-                      'Everything you add or edit is saved immediately and is '
-                      'still there when you reopen the app.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              OutlinedButton.icon(
-                onPressed: () => _confirmReset(context, ref),
-                icon: const Icon(Icons.restart_alt, size: 17),
-                label: const Text('Reset to demo data'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Deletes everything and restores the original sample data. '
-                'This cannot be undone.',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-          child: Text(
-            '${AppInfo.name} v${AppInfo.version}',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
           ),
         ),
       ],
@@ -359,11 +416,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset to demo data?'),
+        title: const Text('Erase all records?'),
         content: const Text(
-          'This permanently deletes every member, department, donation and '
-          'record you have entered, and restores the original sample data. '
-          'It cannot be undone.',
+          'This permanently deletes every member, department, service record '
+          'and everything else you have entered, and returns the app to a fresh '
+          'install. User accounts go too: you will sign in again with the '
+          'default admin username and password. It cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -375,7 +433,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               backgroundColor: AppTheme.danger,
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete and reset'),
+            child: const Text('Erase everything'),
           ),
         ],
       ),
@@ -385,7 +443,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     await ref.read(databaseProvider).resetToSeed();
     if (!context.mounted) return;
-    showLocalSuccess(context, 'Database reset to the original sample data.');
+    showLocalSuccess(context, 'All records erased.');
   }
 
   /// A church-profile field bound to a settings key.

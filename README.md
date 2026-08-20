@@ -58,6 +58,21 @@ Only the differences from the built-in defaults are stored, so a church that
 never edits permissions keeps getting improvements to the defaults. Super Admin
 always keeps full access — it is the account that fixes everyone else's.
 
+## Pastors and leaders
+
+**Members → Pastors & leaders** lists everyone holding a post: branch pastors and
+assistants, department heads and assistants, and group leaders. Someone holding
+two posts is one row showing both.
+
+The list is derived from the branches, departments and groups themselves, not
+stored separately — so it can never disagree with them. "Appoint a leader" writes
+to whichever record owns the post, and a leader must belong to that branch, which
+the repository enforces rather than the form.
+
+There is no delete on this tab. A post is vacated by reassigning it from the
+branch, department or group that owns it; a delete button here would look like it
+removes the person.
+
 ## Clickable stat cards
 
 Some cards are tinted and open the screen behind the number — Active members
@@ -193,7 +208,7 @@ flutter create --platforms=android,ios .
 | `/dashboard` | Two tabs: **Dashboard** (KPIs, trends, activity, alerts) and **Reports** |
 | `/branches` | Table of every campus; click a row for its details in a modal |
 | `/departments` | Youth, Children and other departments, per branch |
-| `/members` | Directory with search, filter, sort and pagination |
+| `/members` | Directory, plus a Pastors & leaders tab |
 | `/members/:id` | Member profile: giving, serving, care and notes |
 | `/attendance` | Service records, trends and member check-in |
 | `/ministries` | Departments and small groups with leaders and capacity |
@@ -205,7 +220,7 @@ flutter create --platforms=android,ios .
 | `/discipleship` | Courses, enrolment and the growth pathway |
 | `/assets` | Equipment register with condition and value *(hidden)* |
 | `/access` | Users, roles and the module permission matrix |
-| `/settings` | Church profile, services, appearance, integrations |
+| `/settings` | Four tabs: Church, Appearance, Preferences, Data |
 
 ## Multi-branch
 

@@ -108,19 +108,35 @@ class Fixtures {
       );
 
   /// Creates a department instance at [branchId] from a catalogue type.
+  ///
+  /// Creates the catalogue type too when one is not named, so a test that just
+  /// wants "a department" does not have to know the seeder's ids — depending on
+  /// them made this fail with a foreign-key error rather than a clear message.
   Future<String> department({
     required String branchId,
     required String headId,
-    String typeId = 'dpt-worship',
+    String? typeId,
     Weekday meetingDay = Weekday.thursday,
     String meetingTime = '6:00 PM',
-  }) =>
+  }) async =>
       repo.createDepartment(
-        typeId: typeId,
+        typeId: typeId ?? await departmentType(),
         branchId: branchId,
         headId: headId,
         meetingDay: meetingDay,
         meetingTime: meetingTime,
+      );
+
+  /// Creates a catalogue type and returns its id.
+  Future<String> departmentType({
+    String name = 'Worship',
+    String description = 'Music and production',
+  }) =>
+      repo.createDepartmentType(
+        name: name,
+        description: description,
+        icon: 'music_note',
+        accent: AccentToken.violet,
       );
 
   /// A branch with a handful of adult members — the common starting point.

@@ -1440,3 +1440,167 @@ class _DepartmentEditFormState extends ConsumerState<_DepartmentEditForm> {
     );
   }
 }
+
+/* ------------------------------------------------------------ leadership */
+
+/// Appoints someone to a post — branch pastor, department head or group leader.
+///
+/// One form for all of them because the question is the same shape: pick the
+/// kind of post, pick which branch/department/group, pick the person. The
+/// alternative was three near-identical dialogs and a menu to choose between
+/// them, which is more clicks to reach the same place.
+///
+/// The member list is filtered to the chosen scope's own branch, because that is
+/// the rule the repository enforces — offering names it will silently reject
+/// would make the form look broken.
+Future<void> showLeadershipForm(
+  BuildContext context, {
+  LeadershipRole? role,
+  String? memberId,
+}) =>
+    showDialog<void>(
+      context: context,
+      builder: (_) => _LeadershipForm(role: role, memberId: memberId),
+    );
+
+class _LeadershipForm extends ConsumerStatefulWidget {
+  const _LeadershipForm({this.role, this.memberId});
+
+  /// Preselected when appointing from a specific row.
+  final LeadershipRole? role;
+  final String? memberId;
+
+  @override
+  ConsumerState<_LeadershipForm> createState() => _LeadershipFormState();
+}
+
+class _LeadershipFormState extends ConsumerState<_LeadershipForm> {
+  late LeadershipRole _role = widget.role ?? LeadershipRole.departmentHead;
+  String? _scopeId;
+  String? _memberId;
+
+  @override
+  void initState() {
+    super.initState();
+    _memberId = widget.memberId;
+  }
+
+  /// The branch, department or group the chosen post belongs to.
+  List<({String id, String name, String branchId})> get _scopes {
+    switch (_role) {
+      case LeadershipRole.branchPastor:
+      case LeadershipRole.assistantPastor:
+        return [
+          for (final b in ref.watch(branchesProvider))
+            (id: b.id, name: b.name, branchId: b.id),
+        ];
+      case LeadershipRole.departmentHead:
+      case LeadershipRole.assistantDepartmentHead:
+        return [
+          for (final d in ref.watch(departmentsProvider))
+            (
+              id: d.id,
+              name: '${ref.watch(departmentNameProvider(d.id))}'
+                  ' · ${ref.watch(branchCodeProvider(d.branchId))}',
+              branchId: d.branchId,
+            ),
+        ];
+      case LeadershipRole.groupLeader:
+        return [
+          for (final g in ref.watch(smallGroupsProvider))
+            (
+              id: g.id,
+              name: '${g.name} · ${ref.watch(branchCodeProvider(g.branchId))}',
+              branchId: g.branchId,
+            ),
+        ];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scopes = _scopes;
+    final scope = scopes.where((s) => s.id == _scopeId).firstOrNull;
+
+    return FormDialog(
+      title: 'Appoint a leader',
+      description:
+          'Leadership is held on the branch, department or group itself, so this '
+          'updates that record — there is no separate list to keep in step.',
+      submitLabel: 'Appoint',
+      successMessage: _memberId == null
+          ? 'Leadership updated.'
+          : '${ref.read(memberNameProvider(_memberId))} is now'
+              ' ${_role.label.toLowerCase()}.',
+      fields: [
+        EnumField<LeadershipRole>(
+          label: 'Post',
+          values: LeadershipRole.values,
+          value: _role,
+          labelOf: (v) => '${v.label} — ${v.description}',
+          onChanged: (v) => setState(() {
+            _role = v;
+            // The scope list changes entirely with the post, so a stale
+            // selection would point at the wrong kind of record.
+            _scopeId = null;
+            _memberId = null;
+          }),
+        ),
+        LabelledField(
+          label: switch (_role) {
+            LeadershipRole.branchPastor ||
+            LeadershipRole.assistantPastor =>
+              'Branch',
+            LeadershipRole.departmentHead ||
+            LeadershipRole.assistantDepartmentHead =>
+              'Department',
+            LeadershipRole.groupLeader => 'Group',
+          },
+          child: DropdownButtonFormField<String>(
+            initialValue: _scopeId,
+            isExpanded: true,
+            hint: Text(scopes.isEmpty
+                ? 'Nothing to lead yet — create one first'
+                : 'Choose one'),
+            items: [
+              for (final s in scopes)
+                DropdownMenuItem(value: s.id, child: Text(s.name)),
+            ],
+            onChanged: scopes.isEmpty
+                ? null
+                : (v) => setState(() {
+                      _scopeId = v;
+                      _memberId = null;
+                    }),
+            validator: (v) => v == null ? 'Choose one' : null,
+          ),
+        ),
+        // Only members of that branch, matching what the repository accepts.
+        MemberField(
+          branchId: scope?.branchId,
+          value: _memberId,
+          label: 'Leader',
+          minimumAge: _role.isPastoral ? 21 : 16,
+          onChanged: (v) => setState(() => _memberId = v),
+        ),
+      ],
+      onSubmit: () async {
+        final repo = ref.read(repositoryProvider);
+        final id = _scopeId!;
+
+        switch (_role) {
+          case LeadershipRole.branchPastor:
+            await repo.setBranchLeadership(id, pastorId: _memberId);
+          case LeadershipRole.assistantPastor:
+            await repo.setBranchLeadership(id, assistantPastorId: _memberId);
+          case LeadershipRole.departmentHead:
+            await repo.setDepartmentLeadership(id, headId: _memberId);
+          case LeadershipRole.assistantDepartmentHead:
+            await repo.setDepartmentLeadership(id, assistantHeadId: _memberId);
+          case LeadershipRole.groupLeader:
+            await repo.setGroupLeader(id, _memberId);
+        }
+      },
+    );
+  }
+}

@@ -12,6 +12,7 @@ import '../utils/formatters.dart';
 import '../widgets/data_table_view.dart';
 import '../widgets/feedback.dart';
 import '../widgets/member_form.dart';
+import '../widgets/record_forms.dart';
 import '../widgets/row_actions.dart';
 import '../widgets/collapsible.dart';
 import '../widgets/member_detail_sheet.dart';
@@ -23,8 +24,78 @@ import '../widgets/stat_card.dart';
 import '../widgets/status_badge.dart';
 import '../utils/csv_export.dart';
 
-class MembersScreen extends ConsumerWidget {
+/// The directory, with leadership on its own tab.
+///
+/// Leaders are the same members, so they belong on this page rather than a
+/// separate screen — but "who leads what" is a different question from "find me
+/// a person", and mixing them made both harder. The Pastors tab answers the
+/// first, and it derives its list from the branches, departments and groups
+/// themselves, so it can never disagree with them.
+class MembersScreen extends ConsumerStatefulWidget {
   const MembersScreen({super.key});
+
+  @override
+  ConsumerState<MembersScreen> createState() => _MembersScreenState();
+}
+
+class _MembersScreenState extends ConsumerState<MembersScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final leaders = ref.watch(leadersProvider);
+
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            child: TabBar(
+              controller: _tabs,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              dividerColor: Colors.transparent,
+              labelColor: scheme.primary,
+              unselectedLabelColor: scheme.onSurfaceVariant,
+              indicatorSize: TabBarIndicatorSize.label,
+              tabs: [
+                const Tab(
+                    icon: Icon(Icons.people_outline, size: 18),
+                    text: 'Directory'),
+                Tab(
+                  icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+                  text: 'Pastors & leaders (${leaders.length})',
+                ),
+              ],
+            ),
+          ),
+        ),
+        Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: const [_DirectoryTab(), _LeadersTab()],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DirectoryTab extends ConsumerWidget {
+  const _DirectoryTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -247,6 +318,184 @@ class MembersScreen extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Everyone who leads something, and what they lead.
+class _LeadersTab extends ConsumerWidget {
+  const _LeadersTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leaders = ref.watch(leadersProvider);
+    final posts = ref.watch(leadershipPostsProvider);
+    final canEdit = ref.watch(canEditProvider('Members'));
+    final theme = Theme.of(context);
+
+    int countOf(LeadershipRole role) =>
+        posts.where((p) => p.role == role).length;
+
+    return PageBody(
+      children: [
+        PageHeader(
+          title: 'Pastors & leaders',
+          description:
+              'Everyone holding a post, drawn from the branches, departments and '
+              'groups themselves — so this list is never out of step with them.',
+          actions: [
+            if (canEdit)
+              FilledButton.icon(
+                onPressed: () => showLeadershipForm(context),
+                icon: const Icon(Icons.add, size: 17),
+                label: const Text('Appoint a leader'),
+              ),
+          ],
+        ),
+        StatRow(
+          sectionKey: 'members.leaders.stats',
+          minItemWidth: 250,
+          maxColumns: 4,
+          children: [
+            StatCard(
+              label: 'People leading',
+              value: '${leaders.length}',
+              hint: '${posts.length} posts in total',
+              icon: Icons.workspace_premium_outlined,
+              accent: AppTheme.violet,
+            ),
+            StatCard(
+              label: 'Branch pastors',
+              value: '${countOf(LeadershipRole.branchPastor)}',
+              hint: '${countOf(LeadershipRole.assistantPastor)} assistants',
+              icon: Icons.church_outlined,
+            ),
+            LinkedStatCard(
+              label: 'Department heads',
+              value: '${countOf(LeadershipRole.departmentHead)}',
+              hint:
+                  '${countOf(LeadershipRole.assistantDepartmentHead)} assistants',
+              icon: Icons.groups_outlined,
+              route: '/departments',
+              module: 'Departments',
+              tooltip: 'Open departments',
+            ),
+            StatCard(
+              label: 'Group leaders',
+              value: '${countOf(LeadershipRole.groupLeader)}',
+              hint: 'small groups',
+              icon: Icons.diversity_3_outlined,
+            ),
+          ],
+        ),
+        SectionCard(
+          title: 'Leadership',
+          description: leaders.isEmpty
+              ? 'Nobody holds a post yet.'
+              : 'One row per person. Someone holding two posts shows both.',
+          child: leaders.isEmpty
+              ? EmptyState(
+                  title: 'No leaders appointed',
+                  description: canEdit
+                      ? 'Use "Appoint a leader" once you have members and a '
+                          'branch, department or group for them to lead.'
+                      : 'Nobody has been appointed to a post yet.',
+                  icon: Icons.workspace_premium_outlined,
+                )
+              : DataTableView<({Member member, List<LeadershipPost> posts})>(
+                  rows: leaders,
+                  rowId: (r) => r.member.id,
+                  pageSize: 12,
+                  searchHint: 'Search by name or what they lead…',
+                  searchable: (r) =>
+                      '${r.member.fullName} '
+                      '${r.posts.map((p) => '${p.role.label} ${p.scopeName}').join(' ')}',
+                  onRowTap: (r) => showMemberDetail(context, ref, r.member),
+                  filters: [
+                    TableFilter<({Member member, List<LeadershipPost> posts})>(
+                      id: 'role',
+                      label: 'Post',
+                      options:
+                          LeadershipRole.values.map((r) => r.label).toList(),
+                      matches: (r, v) =>
+                          r.posts.any((p) => p.role.label == v),
+                    ),
+                  ],
+                  columns: [
+                    TableColumn<({Member member, List<LeadershipPost> posts})>(
+                      id: 'name',
+                      header: 'Leader',
+                      flex: 3,
+                      sortValue: (r) => r.member.lastName,
+                      cell: (r) => PersonTile(
+                        name: r.member.fullName,
+                        secondary: r.member.phone.isEmpty
+                            ? r.member.email
+                            : r.member.phone,
+                      ),
+                    ),
+                    TableColumn<({Member member, List<LeadershipPost> posts})>(
+                      id: 'posts',
+                      header: 'Leads',
+                      flex: 4,
+                      cell: (r) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (final post in r.posts.take(3))
+                            Text(
+                              '${post.role.label} · ${post.scopeName}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: post.role.isPastoral
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: post.role.isPastoral
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          if (r.posts.length > 3)
+                            Text('+ ${r.posts.length - 3} more',
+                                style: theme.textTheme.labelSmall),
+                        ],
+                      ),
+                    ),
+                    TableColumn<({Member member, List<LeadershipPost> posts})>(
+                      id: 'branch',
+                      header: 'Branch',
+                      flex: 2,
+                      hideOnNarrow: true,
+                      cell: (r) => Text(
+                        ref.watch(branchNameProvider(r.member.branchId)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    TableColumn<({Member member, List<LeadershipPost> posts})>(
+                      id: 'actions',
+                      header: '',
+                      width: 116,
+                      cell: (r) => RowActions(
+                        onView: () => showMemberDetail(context, ref, r.member),
+                        onEdit: canEdit
+                            ? () => showLeadershipForm(
+                                  context,
+                                  role: r.posts.first.role,
+                                  memberId: r.member.id,
+                                )
+                            : null,
+                        // Removing a post is done by reassigning it, from the
+                        // branch, department or group that owns it. A delete
+                        // here would look like it removes the person.
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ],
     );

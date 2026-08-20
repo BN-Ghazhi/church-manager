@@ -553,6 +553,58 @@ class ChurchRepository {
     ));
   }
 
+  /// Creates a small group.
+  ///
+  /// Groups had a table and a leader column but no way to add one, so the group
+  /// leader post could never actually be filled.
+  Future<String> createSmallGroup({
+    required String branchId,
+    required String name,
+    required domain.Weekday meetingDay,
+    required String meetingTime,
+    String location = '',
+    int capacity = 30,
+    String? leaderId,
+  }) async {
+    final id = await _nextId('grp', db.smallGroups);
+    await db.into(db.smallGroups).insert(SmallGroupsCompanion.insert(
+          id: id,
+          branchId: branchId,
+          name: name,
+          meetingDay: meetingDay.name,
+          meetingTime: meetingTime,
+          location: Value(location),
+          capacity: Value(capacity),
+        ));
+    // Routed through the setter so the same-branch rule applies here too.
+    if (leaderId != null) await setGroupLeader(id, leaderId);
+    return id;
+  }
+
+  /// Sets a small group's leader.
+  ///
+  /// Held to the same rule as branches and departments: the leader must belong
+  /// to the group's own branch, enforced here rather than in the form, so it
+  /// holds whichever screen calls in.
+  Future<void> setGroupLeader(String groupId, String? leaderId) async {
+    final group = await (db.select(db.smallGroups)
+          ..where((t) => t.id.equals(groupId)))
+        .getSingleOrNull();
+    if (group == null) return;
+
+    var accepted = leaderId;
+    if (accepted != null) {
+      final member = await findMember(accepted);
+      if (member?.branchId != group.branchId) accepted = null;
+    }
+
+    await (db.update(db.smallGroups)..where((t) => t.id.equals(groupId)))
+        .write(SmallGroupsCompanion(
+      leaderId: Value(accepted),
+      updatedAt: Value(_now),
+    ));
+  }
+
   /// Replaces a department's membership in one transaction.
   /// Replaces a department's membership.
   ///

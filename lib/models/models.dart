@@ -865,6 +865,55 @@ class Branch {
   final String website;
 }
 
+/// What kind of leadership a person holds.
+///
+/// Ordered by seniority, so a list of a person's roles reads sensibly and the
+/// Pastors tab can sort by it.
+enum LeadershipRole {
+  branchPastor('Branch pastor', 'Leads a branch'),
+  assistantPastor('Assistant pastor', 'Supports the branch pastor'),
+  departmentHead('Department head', 'Runs a department'),
+  assistantDepartmentHead('Assistant head', 'Supports a department head'),
+  groupLeader('Group leader', 'Leads a small group');
+
+  const LeadershipRole(this.label, this.description);
+
+  final String label;
+  final String description;
+
+  /// True for the two roles that lead a whole campus.
+  bool get isPastoral =>
+      this == LeadershipRole.branchPastor ||
+      this == LeadershipRole.assistantPastor;
+}
+
+/// One leadership post held by one member.
+///
+/// Derived rather than stored: a branch already names its pastor, a department
+/// its head, a group its leader. Recording the same fact a second time in a
+/// "pastors" table would let the two disagree — someone replaced as a
+/// department head but still listed as one. This is a view over those columns.
+@immutable
+class LeadershipPost {
+  const LeadershipPost({
+    required this.memberId,
+    required this.role,
+    required this.branchId,
+    required this.scopeName,
+    this.scopeId,
+  });
+
+  final String memberId;
+  final LeadershipRole role;
+  final String branchId;
+
+  /// What they lead — a branch, department or group name.
+  final String scopeName;
+
+  /// The id of that branch, department or group, for opening it.
+  final String? scopeId;
+}
+
 /* ---------------------------------------------------------- departments */
 
 /// The shared catalogue of department types. HQ defines these; each branch runs

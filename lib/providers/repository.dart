@@ -223,6 +223,111 @@ final departmentMembersProvider = Provider.family<List<Member>, String>(
 final ministriesProvider = Provider<List<Ministry>>(
   (ref) => const <Ministry>[],
 );
+/// Every leadership post across branches, departments and groups.
+///
+/// Assembled from the places leadership is actually recorded, so it cannot drift
+/// out of step with them: change a department's head and this list changes with
+/// it. Scoped like everything else — a branch pastor sees their own branch's
+/// leaders, not the whole church's.
+final leadershipPostsProvider = Provider<List<LeadershipPost>>((ref) {
+  final branches = ref.watch(branchesProvider);
+  final departments = ref.watch(departmentsProvider);
+  final groups = ref.watch(smallGroupsProvider);
+  final posts = <LeadershipPost>[];
+
+  for (final b in branches) {
+    if (b.pastorId.isNotEmpty) {
+      posts.add(LeadershipPost(
+        memberId: b.pastorId,
+        role: LeadershipRole.branchPastor,
+        branchId: b.id,
+        scopeName: b.name,
+        scopeId: b.id,
+      ));
+    }
+    final assistant = b.assistantPastorId ?? '';
+    if (assistant.isNotEmpty) {
+      posts.add(LeadershipPost(
+        memberId: assistant,
+        role: LeadershipRole.assistantPastor,
+        branchId: b.id,
+        scopeName: b.name,
+        scopeId: b.id,
+      ));
+    }
+  }
+
+  for (final d in departments) {
+    final name = ref.watch(departmentNameProvider(d.id));
+    if (d.headId.isNotEmpty) {
+      posts.add(LeadershipPost(
+        memberId: d.headId,
+        role: LeadershipRole.departmentHead,
+        branchId: d.branchId,
+        scopeName: name,
+        scopeId: d.id,
+      ));
+    }
+    final assistant = d.assistantHeadId ?? '';
+    if (assistant.isNotEmpty) {
+      posts.add(LeadershipPost(
+        memberId: assistant,
+        role: LeadershipRole.assistantDepartmentHead,
+        branchId: d.branchId,
+        scopeName: name,
+        scopeId: d.id,
+      ));
+    }
+  }
+
+  for (final g in groups) {
+    if (g.leaderId.isNotEmpty) {
+      posts.add(LeadershipPost(
+        memberId: g.leaderId,
+        role: LeadershipRole.groupLeader,
+        branchId: g.branchId,
+        scopeName: g.name,
+        scopeId: g.id,
+      ));
+    }
+  }
+
+  posts.sort((a, b) {
+    final byRole = a.role.index.compareTo(b.role.index);
+    return byRole != 0 ? byRole : a.scopeName.compareTo(b.scopeName);
+  });
+  return posts;
+});
+
+/// Leadership posts grouped by the member who holds them, so one person
+/// appearing twice is one row with two roles rather than two rows.
+final leadersProvider = Provider<List<({Member member, List<LeadershipPost> posts})>>(
+  (ref) {
+    final byMember = <String, List<LeadershipPost>>{};
+    for (final post in ref.watch(leadershipPostsProvider)) {
+      byMember.putIfAbsent(post.memberId, () => []).add(post);
+    }
+
+    final members = ref.watch(membersProvider);
+    final rows = <({Member member, List<LeadershipPost> posts})>[];
+    for (final entry in byMember.entries) {
+      final member = members.where((m) => m.id == entry.key).firstOrNull;
+      // A post naming someone outside the current scope is skipped rather than
+      // rendered as a blank row.
+      if (member != null) rows.add((member: member, posts: entry.value));
+    }
+
+    rows.sort((a, b) {
+      final bySeniority =
+          a.posts.first.role.index.compareTo(b.posts.first.role.index);
+      return bySeniority != 0
+          ? bySeniority
+          : a.member.lastName.compareTo(b.member.lastName);
+    });
+    return rows;
+  },
+);
+
 final smallGroupsProvider = Provider<List<SmallGroup>>(
   (ref) => _scoped(ref, _value(ref, smallGroupsStreamProvider), (g) => g.branchId),
 );
