@@ -74,12 +74,17 @@ class DepartmentsScreen extends ConsumerWidget {
           maxColumns: 4,
           children: [
             StatCard(
+              accent: AppTheme.violet,
               label: 'Departments running',
               value: '${departments.length}',
               hint: consolidated ? 'across branches in view' : 'at this branch',
               icon: Icons.groups_outlined,
             ),
-            StatCard(
+            LinkedStatCard(
+              accent: AppTheme.info,
+              route: '/members',
+              module: 'Members',
+              tooltip: 'Open the member directory',
               label: 'People serving',
               value: Fmt.number(serving),
               hint: 'department members',

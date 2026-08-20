@@ -69,23 +69,35 @@ class BranchesScreen extends ConsumerWidget {
               hint: '$planting church plant${planting == 1 ? '' : 's'}',
               icon: Icons.account_tree_outlined,
             ),
-            StatCard(
+            LinkedStatCard(
               label: 'Members across branches',
               value: Fmt.number(members.length),
               hint: 'all statuses',
               icon: Icons.people_outline,
+              accent: AppTheme.info,
+              route: '/members',
+              module: 'Members',
+              tooltip: 'Open the member directory',
             ),
-            StatCard(
+            LinkedStatCard(
               label: 'Departments running',
               value: '${departments.length}',
               hint: 'across every branch',
               icon: Icons.groups_outlined,
+              accent: AppTheme.violet,
+              route: '/departments',
+              module: 'Departments',
+              tooltip: 'Open departments',
             ),
-            StatCard(
+            LinkedStatCard(
               label: 'Last Sunday, all branches',
               value: Fmt.number(_latestTotal(attendance)),
               hint: 'combined attendance',
               icon: Icons.how_to_reg_outlined,
+              accent: AppTheme.success,
+              route: '/attendance',
+              module: 'Attendance',
+              tooltip: 'Open attendance and check-in',
             ),
           ],
         ),

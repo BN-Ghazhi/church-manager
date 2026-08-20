@@ -335,7 +335,21 @@ the branch filter itself. Note that client-side scoping is a convenience, not a
 security boundary — when a server arrives, the same filter must be enforced
 server-side (§4, item 5).
 
-### 2.9 Colour and links
+### 2.9 Stat cards that lead somewhere
+
+`StatCard.accent` and `StatCard.onTap` are optional and belong together. Colour
+is not decoration here — it is the affordance that says the tile is pressable,
+so a card that cannot navigate must not be tinted, and `LinkedStatCard` enforces
+exactly that: it takes a route plus the module that route needs, and when
+`canViewProvider` says no it drops the accent, the tap, the tooltip and the
+hover in one go. That keeps a switched-off module from producing a card that
+looks live and then bounces off the router's redirect, which reads as breakage.
+
+Deliberately not applied everywhere. A row of six identically-washed cards is
+louder without being clearer, so the tint marks the numbers a screen exists to
+lead with.
+
+### 2.10 Colour and links
 
 `accentColor` (`lib/theme/app_theme.dart`) is the single mapping from the six
 `AccentToken` values to real colours. It had been copy-pasted into three screens
@@ -350,7 +364,7 @@ read as a relative path and fails silently; an address becomes a maps search, so
 it works without coordinates. A link that cannot be handled says so rather than
 doing nothing, because a dead tap reads as a broken app.
 
-### 2.10 Branding
+### 2.11 Branding
 
 The sidebar logo and the sign-in background can be replaced from Settings. The
 chosen file is **copied into the app's own storage** rather than referenced where
@@ -359,7 +373,7 @@ moves, and the app would silently lose its logo. Only the copy's path lives in
 the settings table, and a missing file falls back to the built-in default rather
 than rendering a broken box, because the database can outlive the image.
 
-### 2.11 Persistence
+### 2.12 Persistence
 
 One SQLite file, via Drift, in the platform's application-support directory. No
 server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
@@ -382,7 +396,7 @@ Each install has its **own** database — a branch laptop is not visible to
 headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
 three options and what each costs.
 
-### 2.12 Notable decisions and their reasons
+### 2.13 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through

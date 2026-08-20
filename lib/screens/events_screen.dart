@@ -53,6 +53,7 @@ class EventsScreen extends ConsumerWidget {
           maxColumns: 4,
           children: [
             StatCard(
+              accent: AppTheme.info,
               label: 'Upcoming events',
               value: '${upcoming.length}',
               hint: 'in the next 35 days',

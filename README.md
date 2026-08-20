@@ -58,6 +58,18 @@ Only the differences from the built-in defaults are stored, so a church that
 never edits permissions keeps getting improvements to the defaults. Super Admin
 always keeps full access — it is the account that fixes everyone else's.
 
+## Clickable stat cards
+
+Some cards are tinted and open the screen behind the number — Active members
+goes to the directory, Last Sunday to attendance, Departments to departments.
+Colour and clickability are the same decision: a tinted card is the signal that
+it does something, so a card pointing at a switched-off module, or one your role
+cannot open, stays plain and inert rather than looking pressable and bouncing off
+a redirect.
+
+Not every card is coloured. Six identically-washed tiles are just louder, not
+clearer, so colour marks the ones worth leading with.
+
 ## Editing a branch
 
 The Edit action on a branch row opens the full record — name, short code,

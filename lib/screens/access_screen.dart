@@ -106,6 +106,7 @@ class _AccessScreenState extends ConsumerState<AccessScreen>
                 maxColumns: 4,
                 children: [
                   StatCard(
+                    accent: AppTheme.info,
                     label: 'Users with access',
                     value: '${users.length}',
                     hint: 'staff and volunteers',
@@ -118,6 +119,7 @@ class _AccessScreenState extends ConsumerState<AccessScreen>
                     icon: Icons.verified_user_outlined,
                   ),
                   StatCard(
+                    accent: AppTheme.warning,
                     label: 'Church-wide access',
                     value: '$multiBranch',
                     hint: 'accounts seeing every branch',

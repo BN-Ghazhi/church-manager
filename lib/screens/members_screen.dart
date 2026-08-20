@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
 import '../providers/repository.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/data_table_view.dart';
 import '../widgets/feedback.dart';
@@ -91,6 +92,7 @@ class MembersScreen extends ConsumerWidget {
               value: Fmt.number(members.length),
               hint: 'all statuses',
               icon: Icons.people_outline,
+              accent: AppTheme.info,
             ),
             StatCard(
               label: 'Active members',
@@ -104,11 +106,15 @@ class MembersScreen extends ConsumerWidget {
               hint: 'awaiting contact',
               icon: Icons.person_add_outlined,
             ),
-            StatCard(
+            LinkedStatCard(
               label: 'Families registered',
               value: Fmt.number(families.length),
               hint: '${Fmt.number(baptised)} baptised members',
               icon: Icons.family_restroom_outlined,
+              accent: AppTheme.violet,
+              route: '/departments',
+              module: 'Departments',
+              tooltip: 'Open departments',
             ),
           ],
         ),

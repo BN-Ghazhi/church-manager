@@ -30,6 +30,42 @@ const _kpiModules = <String, String>{
   'giving': 'Giving & Finance',
 };
 
+/// Where each card goes when tapped, and the module that has to be readable for
+/// the tap to be offered at all. A card whose destination is switched off — or
+/// which the signed-in role cannot open — stays a plain, inert tile rather than
+/// leading somewhere it will be turned away from.
+const _kpiLinks = <String, ({String route, String module, String tooltip})>{
+  'members': (
+    route: '/members',
+    module: 'Members',
+    tooltip: 'Open the member directory',
+  ),
+  'attendance': (
+    route: '/attendance',
+    module: 'Attendance',
+    tooltip: 'Open attendance and check-in',
+  ),
+  'giving': (
+    route: '/finance',
+    module: 'Giving & Finance',
+    tooltip: 'Open giving and expenses',
+  ),
+  'departments': (
+    route: '/departments',
+    module: 'Departments',
+    tooltip: 'Open departments',
+  ),
+};
+
+/// The tint for each card. Only the KPI row is coloured — it is the one place a
+/// wash helps, because these four are the numbers the page exists to lead with.
+const _kpiAccents = <String, Color>{
+  'members': AppTheme.info,
+  'attendance': AppTheme.success,
+  'giving': AppTheme.warning,
+  'departments': AppTheme.violet,
+};
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -79,10 +115,27 @@ class DashboardScreen extends ConsumerWidget {
           maxColumns: 4,
           children: [
             for (final stat in stats)
-              StatCard.fromStat(
-                stat,
-                icon: _kpiIcons[stat.id] ?? Icons.insights_outlined,
-              ),
+              Builder(builder: (context) {
+                final link = _kpiLinks[stat.id];
+                final icon = _kpiIcons[stat.id] ?? Icons.insights_outlined;
+
+                // A card with nowhere sensible to go stays plain rather than
+                // being tinted into looking pressable.
+                if (link == null) {
+                  return StatCard.fromStat(stat, icon: icon);
+                }
+
+                return LinkedStatCard(
+                  label: stat.label,
+                  value: stat.value,
+                  hint: stat.hint,
+                  icon: icon,
+                  accent: _kpiAccents[stat.id],
+                  route: link.route,
+                  module: link.module,
+                  tooltip: link.tooltip,
+                );
+              }),
           ],
         ),
 
