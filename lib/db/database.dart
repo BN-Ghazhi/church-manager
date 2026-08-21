@@ -74,8 +74,9 @@ class AppDatabase extends _$AppDatabase {
   /// 3 — role permissions are editable, so their overrides need somewhere to live.
   /// 4 — branches carry their own phone, email and website.
   /// 5 — members carry a title, so a branch can have several pastors.
+  /// 6 — members carry a photo.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -126,6 +127,11 @@ class AppDatabase extends _$AppDatabase {
           // v4 → v5: one defaulted column, so existing members stay valid.
           if (from < 5 && await _tableExists('members')) {
             await m.addColumn(members, members.title);
+          }
+
+          // v5 → v6: likewise for the photo filename.
+          if (from < 6 && await _tableExists('members')) {
+            await m.addColumn(members, members.photo);
           }
         },
         beforeOpen: (details) async {
@@ -275,6 +281,7 @@ extension MemberMapping on MemberRow {
         notes: notes,
         tags: tags.isEmpty ? const [] : tags.split('|'),
         title: title,
+        photo: photo,
       );
 }
 

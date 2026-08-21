@@ -6,6 +6,7 @@ import '../utils/clock.dart';
 import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
+import '../providers/photos.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -256,8 +257,11 @@ class _DirectoryTab extends ConsumerWidget {
                 header: 'Member',
                 flex: 3,
                 sortValue: (m) => '${m.lastName} ${m.firstName}',
-                cell: (m) =>
-                    PersonTile(name: m.displayName, secondary: m.email),
+                cell: (m) => PersonTile(
+                  name: m.displayName,
+                  secondary: m.email,
+                  photo: ref.watch(memberPhotoProvider(m)),
+                ),
               ),
               TableColumn<Member>(
                 id: 'phone',
@@ -447,6 +451,7 @@ class _LeadersTab extends ConsumerWidget {
                         secondary: r.member.phone.isEmpty
                             ? r.member.email
                             : r.member.phone,
+                        photo: ref.watch(memberPhotoProvider(r.member)),
                       ),
                     ),
                     TableColumn<({Member member, List<LeadershipPost> posts})>(

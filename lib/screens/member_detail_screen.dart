@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../utils/clock.dart';
 import '../models/models.dart';
+import '../providers/photos.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -117,6 +118,11 @@ class MemberDetailScreen extends ConsumerWidget {
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          foregroundImage: () {
+                            final photo =
+                                ref.watch(memberPhotoProvider(member));
+                            return photo == null ? null : FileImage(photo);
+                          }(),
                           child: Text(
                             member.initials,
                             style: theme.textTheme.titleMedium

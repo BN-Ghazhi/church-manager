@@ -92,6 +92,7 @@ class Member {
     this.notes,
     this.tags = const [],
     this.title = '',
+    this.photo = '',
   });
 
   final String id;
@@ -117,6 +118,10 @@ class Member {
   final String? familyId;
   final String? notes;
   final List<String> tags;
+
+  /// Filename of this member's photo, or blank. Resolved to a file by
+  /// `memberPhotoProvider` — the model stays free of filesystem knowledge.
+  final String photo;
 
   /// Honorific, e.g. "Pastor" or "Reverend". Blank for most members.
   ///

@@ -85,6 +85,17 @@ pastor is who someone is, not what they may do in a database.
 post. Someone holding two posts is one row showing both; a pastor who leads
 nothing still gets a row, marked "No post — pastor by title".
 
+## Member photos
+
+**Add member** (or Edit) has a photo at the top of the form — **Add photo**,
+pick a JPG, PNG or WebP up to 6 MB. It then shows in the directory, the Pastors
+tab, the detail view and the full profile. Members without one show their
+initials, which is the normal case rather than a fallback.
+
+The file is copied into the app's own storage, so moving or deleting the original
+does not break it. Only the filename is stored, not a full path — an absolute
+path breaks when records are restored on another machine.
+
 ### Adding a pastor
 
 1. **Members → Add member** (or edit an existing one)

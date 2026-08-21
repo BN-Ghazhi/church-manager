@@ -81,6 +81,14 @@ class Members extends Table with _Timestamps {
   /// person is. Blank for most members.
   TextColumn get title => text().withDefault(const Constant(''))();
 
+  /// Filename of the member's photo inside the app's `photos` directory.
+  ///
+  /// A filename rather than a full path: the application-support directory moves
+  /// between machines and between a native and a sandboxed install, so a stored
+  /// absolute path breaks on restore while a filename stays valid. Blank when
+  /// there is no photo, which is most members.
+  TextColumn get photo => text().withDefault(const Constant(''))();
+
   /// Home branch — every member belongs to exactly one.
   TextColumn get branchId => text().references(Branches, #id)();
   TextColumn get groupId => text().nullable()();

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -9,6 +11,7 @@ class PersonTile extends StatelessWidget {
     required this.name,
     this.secondary,
     this.compact = false,
+    this.photo,
   });
 
   final String name;
@@ -16,6 +19,10 @@ class PersonTile extends StatelessWidget {
   /// Email, role, phone — whatever fits the column.
   final String? secondary;
   final bool compact;
+
+  /// The member's photo. Initials are shown when there is none, which is the
+  /// normal case rather than a fallback.
+  final File? photo;
 
   static String initialsOf(String name) => name
       .split(' ')
@@ -36,6 +43,9 @@ class PersonTile extends StatelessWidget {
         CircleAvatar(
           radius: radius,
           backgroundColor: scheme.surfaceContainerHighest,
+          foregroundImage: photo == null ? null : FileImage(photo!),
+          // Shown while the image decodes, and left in place if it cannot be —
+          // a corrupt file falls back to initials rather than an error icon.
           child: Text(
             initialsOf(name),
             style: theme.textTheme.labelSmall?.copyWith(

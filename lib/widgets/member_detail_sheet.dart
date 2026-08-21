@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/models.dart';
 import '../providers/permissions.dart';
+import '../providers/photos.dart';
 import '../providers/repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/clock.dart';
@@ -26,6 +27,18 @@ void showMemberDetail(BuildContext context, WidgetRef ref, Member member) {
       if (member.phone.isNotEmpty) member.phone,
     ].join(' · '),
     children: [
+      Builder(builder: (context) {
+        final photo = ref.read(memberPhotoProvider(member));
+        if (photo == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: Row(
+            children: [
+              CircleAvatar(radius: 34, foregroundImage: FileImage(photo)),
+            ],
+          ),
+        );
+      }),
       DetailRows(entries: {
         'Title': member.title,
         'Phone': member.phone,

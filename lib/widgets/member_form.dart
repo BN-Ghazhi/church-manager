@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
 import '../config/ghana.dart';
@@ -6,6 +9,7 @@ import '../models/models.dart';
 import 'form_scaffold.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
+import '../providers/photos.dart';
 import '../theme/app_theme.dart';
 import 'feedback.dart';
 import 'page_scaffold.dart';
@@ -52,6 +56,14 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
   late bool _baptised;
   bool _saving = false;
 
+  /// Filename of the photo as it will be saved. Starts as whatever the member
+  /// already has, so opening the form and saving does not lose it.
+  String _photo = '';
+
+  /// The newly picked file, shown before the form is saved.
+  File? _pickedPhoto;
+  bool _pickingPhoto = false;
+
   bool get _isEdit => widget.member != null;
 
   @override
@@ -73,6 +85,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
     _dateOfBirth =
         m?.dateOfBirth ?? DateTime.utc(DateTime.now().year - 30, 1, 1);
     _baptised = m?.isBaptized ?? false;
+    _photo = m?.photo ?? '';
     // New members default to the branch currently in view.
     _branchId = m?.branchId ?? ref.read(selectedBranchProvider);
   }
@@ -126,6 +139,7 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           state: _region ?? '',
           notes: _notes.text.trim(),
           title: _title.text.trim(),
+          photo: _photo,
         );
       } else {
         await repo.createMember(
@@ -144,8 +158,14 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
           state: _region ?? '',
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           title: _title.text.trim(),
+          photo: _photo,
         );
       }
+
+      // Files picked and then replaced or removed during this edit are now
+      // unreferenced. Pruning here rather than on a timer keeps the folder in
+      // step with the records without a background job.
+      await pruneOrphanPhotos(ref);
 
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -181,6 +201,8 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
+                const SizedBox(height: AppSpacing.md + 4),
+                _photoPicker(),
                 const SizedBox(height: AppSpacing.md + 4),
                 ResponsiveGrid(
                   minItemWidth: 230,
@@ -394,6 +416,91 @@ class _MemberFormDialogState extends ConsumerState<_MemberFormDialog> {
         ),
       ],
     );
+  }
+
+  /// Avatar, with buttons to choose or clear a photo.
+  ///
+  /// The picked file is only copied into app storage here; the member record is
+  /// not touched until the form is saved. Choosing a photo and then cancelling
+  /// therefore leaves an unreferenced file, which `pruneOrphanPhotos` clears —
+  /// better than writing to the record before the user has committed to it.
+  Widget _photoPicker() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final existing = widget.member == null
+        ? null
+        : ref.watch(memberPhotoProvider(widget.member!));
+    // A freshly picked file wins over whatever is stored.
+    final shown = _pickedPhoto ?? (_photo.isEmpty ? null : existing);
+
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 32,
+          backgroundColor: scheme.surfaceContainerHighest,
+          foregroundImage: shown == null ? null : FileImage(shown),
+          child: Icon(Icons.person_outline,
+              size: 28, color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Photo',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                shown == null
+                    ? 'Optional. Initials are shown when there is no photo.'
+                    : 'JPG, PNG or WebP · up to 6 MB',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        if (shown != null)
+          IconButton(
+            tooltip: 'Remove photo',
+            onPressed: _pickingPhoto
+                ? null
+                : () => setState(() {
+                      // The file itself is left for the prune pass: the form may
+                      // still be cancelled, and the member would then need it.
+                      _photo = '';
+                      _pickedPhoto = null;
+                    }),
+            icon: const Icon(Icons.close, size: 18),
+          ),
+        const SizedBox(width: AppSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: _pickingPhoto ? null : _choosePhoto,
+          icon: const Icon(Icons.photo_camera_outlined, size: 16),
+          label: Text(shown == null ? 'Add photo' : 'Replace'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _choosePhoto() async {
+    setState(() => _pickingPhoto = true);
+    try {
+      final name = await pickMemberPhoto();
+      if (name == null || !mounted) return;
+
+      final dir = await photoDirectory();
+      if (!mounted) return;
+      setState(() {
+        _photo = name;
+        _pickedPhoto = File(p.join(dir.path, name));
+      });
+    } catch (error) {
+      if (!mounted) return;
+      showLocalSuccess(context, '$error'.replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _pickingPhoto = false);
+    }
   }
 
   Widget _field(String label, Widget control) {

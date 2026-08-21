@@ -214,6 +214,7 @@ class ChurchRepository {
     List<String> tags = const [],
     DateTime? joinedAt,
     String title = '',
+    String photo = '',
   }) async {
     final id = await _nextId('mem', db.members);
     await db.into(db.members).insert(MembersCompanion.insert(
@@ -235,6 +236,7 @@ class ChurchRepository {
           notes: Value(notes),
           tags: Value(tags.join('|')),
           title: Value(_churchTitle(title)),
+          photo: Value(photo),
         ));
     return id;
   }
@@ -268,6 +270,7 @@ class ChurchRepository {
     String? state,
     String? notes,
     String? title,
+    String? photo,
   }) =>
       (db.update(db.members)..where((t) => t.id.equals(id))).write(
         MembersCompanion(
@@ -293,9 +296,25 @@ class ChurchRepository {
           notes: notes == null ? const Value.absent() : Value(notes),
           title:
               title == null ? const Value.absent() : Value(_churchTitle(title)),
+          photo: photo == null ? const Value.absent() : Value(photo),
           updatedAt: Value(_now),
         ),
       );
+
+  /// Every photo filename in use, ignoring branch scope and soft deletes.
+  ///
+  /// Used to decide which photo files are orphaned. It deliberately includes
+  /// soft-deleted members: their row can still be restored, so their photo is
+  /// not litter.
+  Future<List<String>> allMemberPhotos() async {
+    final rows = await (db.selectOnly(db.members)
+          ..addColumns([db.members.photo]))
+        .get();
+    return rows
+        .map((r) => r.read(db.members.photo) ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList();
+  }
 
   /// Soft delete — the row stays for audit, but disappears from every query.
   Future<void> deleteMember(String id) =>
