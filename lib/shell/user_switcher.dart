@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth.dart';
+import '../widgets/access_forms.dart';
 import '../providers/permissions.dart';
 import '../theme/app_theme.dart';
 
@@ -40,9 +41,12 @@ class UserSwitcher extends ConsumerWidget {
       tooltip: 'Account',
       position: PopupMenuPosition.over,
       onSelected: (value) {
-        if (value == 'signout') {
-          ref.read(sessionProvider.notifier).signOut();
-          GoRouter.of(context).go('/sign-in');
+        switch (value) {
+          case 'password':
+            showOwnPasswordForm(context);
+          case 'signout':
+            ref.read(sessionProvider.notifier).signOut();
+            GoRouter.of(context).go('/sign-in');
         }
       },
       itemBuilder: (context) => [
@@ -62,6 +66,18 @@ class UserSwitcher extends ConsumerWidget {
           ),
         ),
         const PopupMenuDivider(),
+        // Every account needs this: the first-run password is published in the
+        // repository, so the admin has to be able to change their own.
+        const PopupMenuItem<String>(
+          value: 'password',
+          child: Row(
+            children: [
+              Icon(Icons.key_outlined, size: 17),
+              SizedBox(width: AppSpacing.sm + 2),
+              Text('Change password'),
+            ],
+          ),
+        ),
         const PopupMenuItem<String>(
           value: 'signout',
           child: Row(

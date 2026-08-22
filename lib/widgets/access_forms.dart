@@ -430,3 +430,89 @@ class _LevelPicker extends StatelessWidget {
     );
   }
 }
+
+/// Changes your own password.
+///
+/// Asks for the current one, unlike the administrator's reset. Anyone can reach
+/// this from the account menu, including from a machine someone left signed in —
+/// so proving you know the existing password is what stops a passer-by locking
+/// the real user out.
+Future<void> showOwnPasswordForm(BuildContext context) => showDialog<void>(
+      context: context,
+      builder: (_) => const _OwnPasswordForm(),
+    );
+
+class _OwnPasswordForm extends ConsumerStatefulWidget {
+  const _OwnPasswordForm();
+
+  @override
+  ConsumerState<_OwnPasswordForm> createState() => _OwnPasswordFormState();
+}
+
+class _OwnPasswordFormState extends ConsumerState<_OwnPasswordForm> {
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+
+  @override
+  void dispose() {
+    for (final c in [_current, _next, _confirm]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+
+    return FormDialog(
+      title: 'Change your password',
+      description: 'Signed in as ${user.username}.',
+      submitLabel: 'Change password',
+      successMessage: 'Your password has been changed.',
+      fields: [
+        LabelledField(
+          label: 'Current password',
+          child: TextFormField(
+            controller: _current,
+            obscureText: true,
+            validator: (v) => (v ?? '').isEmpty
+                ? 'Enter your current password'
+                : null,
+          ),
+        ),
+        LabelledField(
+          label: 'New password',
+          hint: 'At least 8 characters, with a letter and a number.',
+          child: TextFormField(
+            controller: _next,
+            obscureText: true,
+            validator: (v) => Password.validate(v ?? ''),
+          ),
+        ),
+        LabelledField(
+          label: 'Confirm new password',
+          child: TextFormField(
+            controller: _confirm,
+            obscureText: true,
+            // Typed twice because it is obscured: a typo here would lock the
+            // user out of the only account that can fix it.
+            validator: (v) =>
+                v == _next.text ? null : 'The two passwords do not match',
+          ),
+        ),
+      ],
+      onSubmit: () async {
+        final changed = await ref.read(repositoryProvider).changeOwnPassword(
+              userId: user.id,
+              currentPassword: _current.text,
+              newPassword: _next.text,
+            );
+        if (!changed) {
+          throw Exception('That is not your current password.');
+        }
+      },
+    );
+  }
+}

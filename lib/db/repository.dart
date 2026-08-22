@@ -850,6 +850,33 @@ class ChurchRepository {
     return true;
   }
 
+  /// Changes your own password, having proved you know the current one.
+  ///
+  /// Separate from [changePassword], which is the administrator's reset and
+  /// deliberately does not ask: a Super Admin resetting a forgotten password
+  /// cannot know it. Here the current password is required, so someone who walks
+  /// up to an unlocked machine cannot lock the real user out of their account.
+  ///
+  /// Returns false when the current password is wrong, so the form can say so.
+  Future<bool> changeOwnPassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final row = await (db.select(db.userAccounts)
+          ..where((t) => t.id.equals(userId) & t.deletedAt.isNull()))
+        .getSingleOrNull();
+    if (row == null) return false;
+
+    if (!Password.verify(
+        currentPassword, row.passwordSalt, row.passwordHash)) {
+      return false;
+    }
+
+    await changePassword(userId, newPassword);
+    return true;
+  }
+
   Future<void> changePassword(String userId, String newPassword) async {
     final salt = Password.generateSalt();
     await (db.update(db.userAccounts)..where((t) => t.id.equals(userId))).write(

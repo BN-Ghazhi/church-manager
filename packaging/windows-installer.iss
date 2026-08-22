@@ -7,7 +7,7 @@
 #define AppName "Church Management"
 #define AppId "org.gracechapel.churchms"
 #define AppVersion "1.0.0"
-#define AppPublisher "Grace Chapel"
+#define AppPublisher "Kingdom Grace Chapel"
 #define AppExe "churchms.exe"
 
 [Setup]
@@ -27,6 +27,13 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#AppExe}
+; The setup .exe's own icon, and the one in Add/Remove Programs. Without this
+; the installer ships with Inno Setup's generic icon even though the installed
+; app is branded correctly.
+SetupIconFile=..\windows\runner\resources\app_icon.ico
+VersionInfoDescription={#AppName} installer
+VersionInfoProductName={#AppName}
+VersionInfoVersion={#AppVersion}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -62,7 +62,7 @@ Section: office
 Priority: optional
 Architecture: $ARCH
 Depends: libgtk-3-0 | libgtk-3-0t64, libblkid1, liblzma5, libsqlite3-0
-Maintainer: Grace Chapel <office@gracechapel.org>
+Maintainer: Kingdom Grace Chapel <office@kgc.org>
 Description: Church Management System
  Members, attendance, giving, events, volunteers, pastoral care and
  departments across multiple branches. Stores its data locally in

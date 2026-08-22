@@ -176,7 +176,13 @@ most likely to be using this. Members do not need an email address either; the
 field is optional on the member form.
 
 **Change that password once you are in.** It is published in this repository, so
-it protects nothing.
+it protects nothing. Click your name at the bottom of the sidebar →
+**Change password**. It asks for the current one, so nobody at an unlocked
+machine can lock you out of your own account.
+
+If someone forgets theirs, a Super Admin resets it from **Roles & Access** — open
+the user and choose **Reset password**. There is no email server to send a link
+to, so you set a new one and tell them what it is.
 
 Then, in order:
 
