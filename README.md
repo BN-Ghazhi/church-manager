@@ -31,6 +31,18 @@ Each install has its own database, so a branch working on its own laptop is
 See **[BRANCH-DATA.md](BRANCH-DATA.md)** for the three options and what each
 costs.
 
+## One branch for now
+
+Multi-branch is supported but switched off (`multiBranchEnabled` in
+`lib/config/features.dart`). The Branches screen stays visible so the capability
+is discoverable, but nothing on it can be changed and **Add branch** is shown
+disabled rather than hidden — a church that grows should be able to see the app
+handles it. The branch switcher is gone, since there is only one branch, and
+everything files against it automatically.
+
+Switching it back on is one line. No data model changes are involved: a
+single-branch church is the multi-branch case with one row.
+
 ## Switched-off modules
 
 Giving & Finance, Communication, Volunteers, Pastoral Care and Assets are hidden

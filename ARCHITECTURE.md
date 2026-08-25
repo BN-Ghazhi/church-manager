@@ -284,7 +284,28 @@ A service can exist with a headcount and no names against it — that is a norma
 state, not an error, and both screens say so explicitly rather than showing an
 empty list that reads like a bug.
 
-### 2.8 Who can see what
+### 2.8 First-run setup
+
+A fresh database holds the department catalogue and nothing else — no church, no
+branch, no account. `Seeder.needsOnboarding` reports that, resolved once at
+startup into `needsOnboardingProvider` because the router's redirect is
+synchronous, and the redirect then makes `/setup` the only reachable route.
+
+The app previously shipped `admin` / `church2026`. That is not a default so much
+as a published credential: every install in the world had the same one until
+somebody acted on a line in the README. Setup collects the first password
+instead, so there is nothing to leak.
+
+`completeOnboarding` is one transaction. A half-finished setup would leave an app
+that cannot be signed into *and* cannot be set up again, which is unrecoverable
+without deleting the database — so the branch, the account and the church profile
+land together or not at all. Writing this exposed a real bug: the department
+catalogue was seeded by both first launch and setup, and the second plain insert
+collided and aborted the transaction, so setup failed on every fresh install.
+It is `insertOnConflictUpdate` now, and `test/onboarding_test.dart` covers the
+repeat.
+
+### 2.9 Who can see what
 
 Access has two dimensions that always apply together:
 
@@ -335,7 +356,7 @@ the branch filter itself. Note that client-side scoping is a convenience, not a
 security boundary — when a server arrives, the same filter must be enforced
 server-side (§4, item 5).
 
-### 2.9 Three separate ideas: title, post, account
+### 2.10 Three separate ideas: title, post, account
 
 Conflating any two of these breaks the church's actual structure, so they are
 kept apart deliberately:
@@ -366,7 +387,7 @@ The temptation was a `pastors` table or a `pastor` role. Either would have made 
 title mean access, which is precisely wrong: a title is who someone is, an
 account is what they may do.
 
-### 2.10 Leadership is derived, not stored
+### 2.11 Leadership is derived, not stored
 
 A branch already names its pastor, a department its head, a group its leader.
 `leadershipPostsProvider` assembles the Pastors tab from those columns instead of
@@ -380,7 +401,7 @@ the table itself sort sensibly without a separate rank column.
 `setGroupLeader` was added alongside `createSmallGroup`: groups had a table and a
 `leaderId` column but no way to create one, so that post could never be filled.
 
-### 2.11 Stat cards that lead somewhere
+### 2.12 Stat cards that lead somewhere
 
 `StatCard.accent` and `StatCard.onTap` are optional and belong together. Colour
 is not decoration here — it is the affordance that says the tile is pressable,
@@ -394,7 +415,7 @@ Deliberately not applied everywhere. A row of six identically-washed cards is
 louder without being clearer, so the tint marks the numbers a screen exists to
 lead with.
 
-### 2.12 Colour and links
+### 2.13 Colour and links
 
 `accentColor` (`lib/theme/app_theme.dart`) is the single mapping from the six
 `AccentToken` values to real colours. It had been copy-pasted into three screens
@@ -409,7 +430,7 @@ read as a relative path and fails silently; an address becomes a maps search, so
 it works without coordinates. A link that cannot be handled says so rather than
 doing nothing, because a dead tap reads as a broken app.
 
-### 2.13 Member photos
+### 2.14 Member photos
 
 `Member.photo` holds a **filename**, not a path, resolved against the app's
 `photos` directory by `memberPhotoProvider`. An absolute path breaks the moment
@@ -430,7 +451,7 @@ a soft-deleted member can still be restored, so their photo is not litter. Both
 are tested, since a mistake there destroys files rather than merely displaying
 something wrong.
 
-### 2.14 Branding
+### 2.15 Branding
 
 The sidebar logo and the sign-in background can be replaced from Settings. The
 chosen file is **copied into the app's own storage** rather than referenced where
@@ -439,7 +460,7 @@ moves, and the app would silently lose its logo. Only the copy's path lives in
 the settings table, and a missing file falls back to the built-in default rather
 than rendering a broken box, because the database can outlive the image.
 
-### 2.15 Persistence
+### 2.16 Persistence
 
 One SQLite file, via Drift, in the platform's application-support directory. No
 server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
@@ -462,7 +483,7 @@ Each install has its **own** database — a branch laptop is not visible to
 headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
 three options and what each costs.
 
-### 2.16 Notable decisions and their reasons
+### 2.17 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through

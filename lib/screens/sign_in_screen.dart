@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
 import '../config/app_config.dart';
-import '../db/seeder.dart';
 import '../providers/branding.dart';
 import '../providers/auth.dart';
 import '../theme/app_theme.dart';
@@ -231,86 +230,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   ),
                 ),
 
-                const SizedBox(height: AppSpacing.md),
-                const _FirstSignIn(),
+
               ],
             ),
           ),
         ),
         ),
-      ),
-    );
-  }
-}
-/// The first-run credentials, shown because on a fresh install there is no
-/// other way in.
-///
-/// Deliberately blunt about the password being public in the source: it is a
-/// starting point, not a secret, and must be changed before the app holds real
-/// congregation records.
-class _FirstSignIn extends StatelessWidget {
-  const _FirstSignIn();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    Widget row(String label, String value) => Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 74,
-                child: Text(
-                  label,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
-                ),
-              ),
-              SelectableText(
-                value,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        );
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppTheme.info.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppTheme.info.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.vpn_key_outlined, size: 16, color: AppTheme.info),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'First sign-in',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm + 2),
-          row('Username', Seeder.firstAdminUsername),
-          row('Password', Seeder.firstAdminPassword),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Change this password once you are in — it is published in the '
-            'source code, so it protects nothing.',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
       ),
     );
   }

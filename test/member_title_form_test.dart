@@ -1,7 +1,6 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/providers/auth.dart';
 import 'package:churchms/theme/app_theme.dart';
 import 'package:churchms/utils/formatters.dart';
@@ -10,6 +9,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -30,9 +31,9 @@ void main() {
 
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     final admin = (await ChurchRepository(db)
-        .signIn(Seeder.firstAdminUsername, Seeder.firstAdminPassword))!;
+        .signIn(TestSetup.username, TestSetup.password))!;
 
     final container =
         ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);

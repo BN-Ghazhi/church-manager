@@ -1,7 +1,6 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:churchms/providers/auth.dart';
 import 'package:churchms/screens/branches_screen.dart';
@@ -11,6 +10,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 /// The whole path the user took: open a branch, Edit leadership, pick, save.
@@ -27,10 +28,10 @@ void main() {
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = ChurchRepository(db);
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     final hq = (await repo.watchBranches().first).single.id;
     admin = (await repo.signIn(
-        Seeder.firstAdminUsername, Seeder.firstAdminPassword))!;
+        TestSetup.username, TestSetup.password))!;
     for (final name in ['First', 'Second']) {
       await repo.createMember(
         branchId: hq,

@@ -8,6 +8,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'db/database.dart';
 import 'providers/auth.dart';
 import 'providers/permissions.dart';
+import 'db/seeder.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/sign_in_screen.dart';
 
 import 'config/app_config.dart';
@@ -47,9 +49,14 @@ Future<void> main() async {
   // explanation — which is exactly what an unguarded await produced on web.
   final database = AppDatabase();
   String? startupError;
+  var needsSetup = false;
 
   try {
     await database.isEmpty.timeout(const Duration(seconds: 20));
+    // No account means nobody can sign in, so setup has to run first.
+    needsSetup = await Seeder(database)
+        .needsOnboarding
+        .timeout(const Duration(seconds: 20));
   } on TimeoutException {
     startupError = 'The database took too long to open.';
   } catch (error) {
@@ -58,7 +65,10 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: [databaseProvider.overrideWithValue(database)],
+      overrides: [
+        databaseProvider.overrideWithValue(database),
+        needsOnboardingProvider.overrideWithValue(needsSetup),
+      ],
       child: startupError == null
           ? const ChurchApp()
           : _StartupFailure(message: startupError),
@@ -76,6 +86,15 @@ GoRouter _buildRouter(Ref ref) => GoRouter(
   redirect: (context, state) {
     final signedIn = ref.read(sessionProvider) != null;
     final atSignIn = state.matchedLocation == '/sign-in';
+    final atSetup = state.matchedLocation == '/setup';
+
+    // A fresh install has no account, so there is nothing to sign in to.
+    // Checked first: setup is the only reachable screen until it is done.
+    if (!signedIn && ref.read(needsOnboardingProvider)) {
+      return atSetup ? null : '/setup';
+    }
+    // Setup is not somewhere to return to once finished.
+    if (atSetup) return signedIn ? '/dashboard' : '/sign-in';
 
     if (!signedIn) return atSignIn ? null : '/sign-in';
     if (atSignIn) return '/dashboard';
@@ -93,6 +112,10 @@ GoRouter _buildRouter(Ref ref) => GoRouter(
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/setup',
+      pageBuilder: (c, s) => const NoTransitionPage(child: OnboardingScreen()),
+    ),
     GoRoute(
       path: '/sign-in',
       pageBuilder: (c, s) => const NoTransitionPage(child: SignInScreen()),

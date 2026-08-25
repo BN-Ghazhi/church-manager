@@ -4,7 +4,6 @@ import 'package:churchms/config/permissions.dart';
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:churchms/providers/auth.dart';
 import 'package:churchms/providers/permissions.dart';
@@ -12,6 +11,8 @@ import 'package:churchms/providers/repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 
 /// A switched-off module must be unreachable by every route into it.
 ///
@@ -27,11 +28,11 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
 
     final repo = ChurchRepository(db);
     final admin = (await repo.signIn(
-        Seeder.firstAdminUsername, Seeder.firstAdminPassword))!;
+        TestSetup.username, TestSetup.password))!;
 
     container = ProviderContainer(
       overrides: [databaseProvider.overrideWithValue(db)],

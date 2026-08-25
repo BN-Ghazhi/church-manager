@@ -1,6 +1,5 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -92,7 +91,7 @@ void main() {
   // would just be a second place to forget to update.
 
   test('a username clash is refused rather than silently applied', () async {
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     final fx = Fixtures(db);
     final branchId = (await repo.watchBranches().first).single.id;
 
@@ -102,8 +101,11 @@ void main() {
       role: UserRole.branchAdmin,
     );
 
-    // 'admin' is the seeded account, so this must be rejected.
-    final ok = await repo.updateUserIdentity(second, username: 'admin');
+    // The administrator created by setup already holds this username, so
+    // renaming onto it must be rejected. Taken from TestSetup rather than
+    // written out, so it cannot drift from what setup actually creates.
+    final ok =
+        await repo.updateUserIdentity(second, username: TestSetup.username);
     expect(ok, isFalse);
 
     final users = await repo.watchUsers().first;
@@ -112,7 +114,7 @@ void main() {
   });
 
   test('renaming an account lower-cases the username', () async {
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     final fx = Fixtures(db);
     final branchId = (await repo.watchBranches().first).single.id;
     final id = await fx.user(

@@ -1,71 +1,72 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
-import 'package:churchms/db/repository.dart';
+import 'package:churchms/db/seeder.dart';
 import 'package:churchms/providers/auth.dart';
-import 'package:churchms/shell/user_switcher.dart';
+import 'package:churchms/screens/onboarding_screen.dart';
 import 'package:churchms/theme/app_theme.dart';
 import 'package:churchms/utils/formatters.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
-
-import 'fixtures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+/// First-run setup is the only way into a fresh install, so it has to work.
 void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
 
-  testWidgets('Change password is reachable from the account menu', (t) async {
+  testWidgets('the setup wizard collects the church then the account',
+      (t) async {
     initializeDateFormatting(Fmt.locale);
     Password.useFastHashingForTests();
-    t.view.physicalSize = const Size(1000, 900);
+    t.view.physicalSize = const Size(900, 1100);
     t.view.devicePixelRatio = 1.0;
     addTearDown(t.view.reset);
 
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    await TestSetup.run(db);
-    final admin = (await ChurchRepository(db)
-        .signIn(TestSetup.username, TestSetup.password))!;
+    await Seeder(db).seedFirstRun();
 
     final c = ProviderContainer(
         overrides: [databaseProvider.overrideWithValue(db)]);
     addTearDown(c.dispose);
-    c.read(sessionProvider.notifier).refresh(admin);
 
     await t.pumpWidget(UncontrolledProviderScope(
       container: c,
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const Scaffold(
-          body: SizedBox(width: 260, child: UserSwitcher()),
-        ),
+        home: const OnboardingScreen(),
       ),
     ));
     for (var i = 0; i < 10; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }
 
-    await t.tap(find.byType(UserSwitcher));
+    expect(find.text('Welcome'), findsOneWidget);
+    // Church name, short name, branch name.
+    expect(find.byType(TextFormField), findsNWidgets(3));
+
+    // Typing the church name should fill the derived fields.
+    await t.enterText(find.byType(TextFormField).at(0), 'Kingdom Grace Chapel');
+    for (var i = 0; i < 5; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+
+    // The short name and branch are derived, so most churches type once.
+    final short = t.widget<TextFormField>(find.byType(TextFormField).at(1));
+    final branch = t.widget<TextFormField>(find.byType(TextFormField).at(2));
+    expect(short.controller?.text, 'K.G.C.');
+    expect(branch.controller?.text, 'Kingdom Grace Chapel Headquarters');
+
+    await t.tap(find.text('Continue'));
     for (var i = 0; i < 10; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }
-    expect(find.text('Change password'), findsOneWidget,
-        reason: 'every account must be able to change its own password — the '
-            'first-run one is published in the repository');
-
-    await t.tap(find.text('Change password'));
-    for (var i = 0; i < 12; i++) {
-      await t.pump(const Duration(milliseconds: 100));
-    }
-
     expect(t.takeException(), isNull);
-    expect(find.text('Change your password'), findsOneWidget);
-    // Asking for the current password is what stops someone at an unlocked
-    // machine locking the real user out.
-    expect(find.text('Current password'), findsOneWidget);
-    expect(find.text('Confirm new password'), findsOneWidget);
+    expect(find.text('Finish setup'), findsOneWidget);
+    // Name, username, password, confirm.
+    expect(find.byType(TextFormField), findsNWidgets(4));
+    expect(find.text('Confirm password'), findsOneWidget);
   });
 }

@@ -1,9 +1,10 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 
 /// Changing your own password, which requires proving you know the current one.
 ///
@@ -21,9 +22,9 @@ void main() {
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = ChurchRepository(db);
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     userId = (await repo.signIn(
-            Seeder.firstAdminUsername, Seeder.firstAdminPassword))!
+            TestSetup.username, TestSetup.password))!
         .id;
   });
 
@@ -32,17 +33,17 @@ void main() {
   test('the right current password lets you change it', () async {
     final changed = await repo.changeOwnPassword(
       userId: userId,
-      currentPassword: Seeder.firstAdminPassword,
+      currentPassword: TestSetup.password,
       newPassword: 'kgcAccra2026',
     );
     expect(changed, isTrue);
 
     // The new one works...
-    expect(await repo.signIn(Seeder.firstAdminUsername, 'kgcAccra2026'),
+    expect(await repo.signIn(TestSetup.username, 'kgcAccra2026'),
         isNotNull);
     // ...and the old one no longer does.
     expect(
-      await repo.signIn(Seeder.firstAdminUsername, Seeder.firstAdminPassword),
+      await repo.signIn(TestSetup.username, TestSetup.password),
       isNull,
       reason: 'the published default must stop working once changed',
     );
@@ -58,12 +59,12 @@ void main() {
 
     // The account is untouched: the real password still works...
     expect(
-      await repo.signIn(Seeder.firstAdminUsername, Seeder.firstAdminPassword),
+      await repo.signIn(TestSetup.username, TestSetup.password),
       isNotNull,
       reason: 'a failed attempt must not lock the owner out',
     );
     // ...and the attempted one does not.
-    expect(await repo.signIn(Seeder.firstAdminUsername, 'attackerChosen1'),
+    expect(await repo.signIn(TestSetup.username, 'attackerChosen1'),
         isNull);
   });
 
@@ -71,7 +72,7 @@ void main() {
     expect(
       await repo.changeOwnPassword(
         userId: 'usr-nobody',
-        currentPassword: Seeder.firstAdminPassword,
+        currentPassword: TestSetup.password,
         newPassword: 'whatever2026',
       ),
       isFalse,
@@ -83,14 +84,14 @@ void main() {
     // cannot know it, so changePassword deliberately does not ask.
     await repo.changePassword(userId, 'resetByAdmin1');
 
-    expect(await repo.signIn(Seeder.firstAdminUsername, 'resetByAdmin1'),
+    expect(await repo.signIn(TestSetup.username, 'resetByAdmin1'),
         isNotNull);
   });
 
   test('a changed password clears the must-change flag', () async {
     await repo.changeOwnPassword(
       userId: userId,
-      currentPassword: Seeder.firstAdminPassword,
+      currentPassword: TestSetup.password,
       newPassword: 'kgcAccra2026',
     );
 

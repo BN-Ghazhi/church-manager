@@ -3,7 +3,6 @@ import 'package:churchms/config/features.dart';
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:churchms/providers/auth.dart';
 import 'package:churchms/providers/permissions.dart';
@@ -25,7 +24,7 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
 
     final repo = ChurchRepository(db);
     final fixtures = Fixtures(db);

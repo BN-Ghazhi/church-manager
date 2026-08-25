@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
+import '../config/features.dart';
 import '../models/models.dart';
 import '../providers/auth.dart';
 import '../providers/permissions.dart';
@@ -37,7 +38,10 @@ class BranchesScreen extends ConsumerWidget {
     final members = ref.watch(membersProvider);
     final departments = ref.watch(departmentsProvider);
     final attendance = ref.watch(attendanceRecordsProvider);
-    final canEdit = ref.watch(canEditProvider('Branches'));
+    // Multi-branch is switched off, so this is a read-only view of the single
+    // branch. The permission still matters for when it is switched back on.
+    final canEdit = ref.watch(canEditProvider('Branches')) &&
+        Features.multiBranchEnabled;
 
     final planting =
         branches.where((b) => b.status == BranchStatus.planting).length;
@@ -46,17 +50,33 @@ class BranchesScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'Branches',
-          description:
-              'Every campus in the church network, with its leadership, size and health.',
+          description: Features.multiBranchEnabled
+              ? 'Every campus in the church network, with its leadership, size '
+                  'and health.'
+              : 'Your church runs from one branch for now. Everything you '
+                  'record is filed against it.',
           actions: [
-            if (canEdit)
+            if (Features.multiBranchEnabled && canEdit)
               FilledButton.icon(
                 onPressed: () => showBranchForm(context),
                 icon: const Icon(Icons.add, size: 17),
                 label: const Text('Add branch'),
+              )
+            // Shown but not usable, so the capability stays discoverable
+            // without pretending it works. Hiding it would leave a church that
+            // grows wondering whether the app supports more than one campus.
+            else
+              Tooltip(
+                message: 'Several branches are not switched on yet',
+                child: FilledButton.icon(
+                  onPressed: null,
+                  icon: const Icon(Icons.add, size: 17),
+                  label: const Text('Add branch'),
+                ),
               ),
           ],
         ),
+        if (!Features.multiBranchEnabled) const _SingleBranchNotice(),
 
         StatRow(
           sectionKey: 'branches.stats',
@@ -473,6 +493,54 @@ class _BranchContact extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Explains why nothing on this screen can be changed.
+class _SingleBranchNotice extends StatelessWidget {
+  const _SingleBranchNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppTheme.info.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppTheme.info.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 18, color: AppTheme.info),
+          const SizedBox(width: AppSpacing.sm + 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'One branch for now',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Several campuses are supported but switched off, so members, '
+                  'services and giving all file against your one branch without '
+                  'you choosing it each time. Multi-branch can be switched on '
+                  'when the church plants its next campus.',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

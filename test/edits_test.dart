@@ -1,6 +1,5 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -142,7 +141,7 @@ void main() {
     final fresh = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(fresh.close);
     final freshRepo = ChurchRepository(fresh);
-    await Seeder(fresh).seedFirstRun();
+    await TestSetup.run(fresh);
 
     final hq = (await freshRepo.watchBranches().first)
         .firstWhere((b) => b.isHeadquarters)

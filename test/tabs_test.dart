@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:churchms/providers/auth.dart';
 import 'package:churchms/screens/members_screen.dart';
@@ -14,6 +13,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
@@ -29,10 +30,10 @@ void main() {
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     final repo = ChurchRepository(db);
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     final hq = (await repo.watchBranches().first).single.id;
     admin = (await repo.signIn(
-        Seeder.firstAdminUsername, Seeder.firstAdminPassword))!;
+        TestSetup.username, TestSetup.password))!;
 
     final pastor = await repo.createMember(
       branchId: hq, firstName: 'Samuel', lastName: 'Mensah',

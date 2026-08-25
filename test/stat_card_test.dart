@@ -1,7 +1,6 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:churchms/providers/auth.dart';
 import 'package:churchms/theme/app_theme.dart';
@@ -10,6 +9,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'fixtures.dart';
 import 'package:go_router/go_router.dart';
 
 /// A clickable card must only be clickable when its destination is open.
@@ -25,9 +26,9 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
     admin = (await ChurchRepository(db).signIn(
-        Seeder.firstAdminUsername, Seeder.firstAdminPassword))!;
+        TestSetup.username, TestSetup.password))!;
   });
 
   tearDown(() => db.close());

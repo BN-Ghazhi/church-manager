@@ -1,7 +1,6 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/password.dart';
 import 'package:churchms/db/repository.dart';
-import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,7 +18,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = ChurchRepository(db);
     fixtures = Fixtures(db);
-    await Seeder(db).seedFirstRun();
+    await TestSetup.run(db);
   });
 
   tearDown(() => db.close());
@@ -64,8 +63,8 @@ void main() {
 
     test('the first administrator can sign in', () async {
       final signedIn = await repo.signIn(
-        Seeder.firstAdminUsername,
-        Seeder.firstAdminPassword,
+        TestSetup.username,
+        TestSetup.password,
       );
       expect(signedIn, isNotNull);
       expect(signedIn!.canSeeAllBranches, isTrue);
@@ -204,8 +203,8 @@ void main() {
   group('authentication', () {
     test('a correct password signs in', () async {
       final user = await repo.signIn(
-        Seeder.firstAdminUsername,
-        Seeder.firstAdminPassword,
+        TestSetup.username,
+        TestSetup.password,
       );
       expect(user, isNotNull);
       expect(user!.role, UserRole.superAdmin);
@@ -213,7 +212,7 @@ void main() {
 
     test('a wrong password is rejected', () async {
       final user =
-          await repo.signIn(Seeder.firstAdminUsername, 'not-the-password');
+          await repo.signIn(TestSetup.username, 'not-the-password');
       expect(user, isNull);
     });
 
@@ -224,8 +223,8 @@ void main() {
 
     test('email is case-insensitive', () async {
       final user = await repo.signIn(
-        Seeder.firstAdminUsername.toUpperCase(),
-        Seeder.firstAdminPassword,
+        TestSetup.username.toUpperCase(),
+        TestSetup.password,
       );
       expect(user, isNotNull);
     });
@@ -235,7 +234,7 @@ void main() {
       final target = users.first;
       await repo.updateUserRole(target.id, status: AccountStatus.suspended);
 
-      final user = await repo.signIn(target.username, Seeder.firstAdminPassword);
+      final user = await repo.signIn(target.username, TestSetup.password);
       expect(user, isNull);
     });
 
@@ -265,7 +264,7 @@ void main() {
 
       await repo.changePassword(target.id, 'brand-new-pass9');
 
-      expect(await repo.signIn(target.username, Seeder.firstAdminPassword), isNull);
+      expect(await repo.signIn(target.username, TestSetup.password), isNull);
       expect(await repo.signIn(target.username, 'brand-new-pass9'), isNotNull);
     });
 
@@ -292,8 +291,8 @@ void main() {
     test('the plain password is never stored', () async {
       final rows = await db.select(db.userAccounts).get();
       for (final row in rows) {
-        expect(row.passwordHash, isNot(contains(Seeder.firstAdminPassword)));
-        expect(row.passwordHash, isNot(equals(Seeder.firstAdminPassword)));
+        expect(row.passwordHash, isNot(contains(TestSetup.password)));
+        expect(row.passwordHash, isNot(equals(TestSetup.password)));
       }
     });
 

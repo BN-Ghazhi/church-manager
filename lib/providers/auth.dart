@@ -12,6 +12,16 @@ final databaseProvider = Provider<AppDatabase>(
   (ref) => throw UnimplementedError('databaseProvider must be overridden'),
 );
 
+/// Whether first-run setup still has to happen.
+///
+/// Resolved once at startup and overridden into the scope, because the router's
+/// redirect is synchronous and cannot await a database read. Setup completing
+/// signs the new administrator in, which moves the redirect on, so this never
+/// needs to change after launch.
+final needsOnboardingProvider = Provider<bool>(
+  (ref) => throw StateError('needsOnboardingProvider must be overridden'),
+);
+
 final repositoryProvider = Provider<ChurchRepository>(
   (ref) => ChurchRepository(ref.watch(databaseProvider)),
 );

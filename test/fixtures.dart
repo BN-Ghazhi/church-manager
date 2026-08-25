@@ -1,5 +1,6 @@
 import 'package:churchms/db/database.dart';
 import 'package:churchms/db/repository.dart';
+import 'package:churchms/db/seeder.dart';
 import 'package:churchms/models/models.dart';
 
 /// Test data builders.
@@ -9,6 +10,36 @@ import 'package:churchms/models/models.dart';
 /// Tests that need members, branches or giving therefore create their own,
 /// which is better anyway: each test states the data it depends on instead of
 /// relying on a seed it does not control.
+/// Runs setup with known values, standing in for what the wizard collects.
+///
+/// The app no longer ships an account, so a test that needs to sign in has to
+/// create one. Constants rather than literals scattered through the suite, so a
+/// change to setup is a change in one place.
+class TestSetup {
+  const TestSetup._();
+
+  static const churchName = 'Kingdom Grace Chapel';
+  static const shortName = 'K.G.C.';
+  static const branchName = 'Kingdom Grace Chapel Headquarters';
+  static const adminName = 'Grace Ansah';
+  static const username = 'grace';
+  static const password = 'church2026test';
+
+  /// Seeds the catalogue and completes setup, leaving a signed-in-able admin.
+  static Future<void> run(AppDatabase db) async {
+    final seeder = Seeder(db);
+    await seeder.seedFirstRun();
+    await seeder.completeOnboarding(
+      churchName: churchName,
+      shortName: shortName,
+      branchName: branchName,
+      adminName: adminName,
+      adminUsername: username,
+      adminPassword: password,
+    );
+  }
+}
+
 class Fixtures {
   Fixtures(this.db) : repo = ChurchRepository(db);
 
