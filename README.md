@@ -150,6 +150,22 @@ list is scannable by campus. Phone, email, website and address are links: they
 open the dialler, mail client, browser or a map. An address with no coordinates
 still works — it becomes a maps search.
 
+## The app icon
+
+One script generates every platform's icon from a single definition:
+
+```bash
+python3 packaging/make-icons.py
+```
+
+That writes the Linux icon-theme sizes, the Windows `.ico` (seven sizes, 16–256),
+the macOS `.appiconset` up to 1024px, and the web PWA icons including the
+maskable variants. The artwork is drawn at each size rather than scaled from one
+PNG — the original was 256px and macOS wants 1024, and upscaling that is visibly
+soft on the first thing anyone sees of the app.
+
+To change the icon, edit the `draw()` function in that script and re-run it.
+
 ## Your own logo and sign-in background
 
 **Settings → Branding** replaces the sidebar logo and the sign-in background.
@@ -313,6 +329,7 @@ their own branch and cannot see any other; a Super Admin sees everything.
 | What | Where |
 |---|---|
 | Church name, address, services, currency | `lib/config/app_config.dart` |
+| App icon, every platform | `packaging/make-icons.py` |
 | Colours, spacing, radius, type | `lib/theme/app_theme.dart` |
 | Navigation and screen list | `lib/config/navigation.dart` |
 | Domain model | `lib/models/models.dart` |

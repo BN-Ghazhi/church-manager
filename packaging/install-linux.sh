@@ -23,7 +23,7 @@ INSTALL_DIR="$HOME/.local/lib/$APP_ID"
 DATA_DIR="$HOME/.local/share/$APP_ID"
 BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
-ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+ICON_ROOT="$HOME/.local/share/icons/hicolor"
 
 if [[ ! -x "$BUNDLE/churchms" ]]; then
   echo "No release build found at:"
@@ -38,15 +38,21 @@ echo "Installing $APP_NAME…"
 
 # Replace any previous install so upgrades do not leave stale libraries behind.
 rm -rf "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR" "$ICON_DIR"
+mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR"
 cp -a "$BUNDLE/." "$INSTALL_DIR/"
 
 # Launcher on PATH, for starting it from a terminal.
 ln -sf "$INSTALL_DIR/churchms" "$BIN_DIR/churchms"
 
-if [[ -f "$PROJECT_ROOT/packaging/icon.png" ]]; then
-  cp "$PROJECT_ROOT/packaging/icon.png" "$ICON_DIR/$APP_ID.png"
-fi
+# Every size the icon theme looks for, so the dock, the window list and the
+# menu each get a purpose-drawn frame rather than a downscaled 256px one.
+for size in 16 24 32 48 64 128 256 512; do
+  src="$PROJECT_ROOT/packaging/icons/$size.png"
+  [[ -f "$src" ]] || continue
+  dest="$ICON_ROOT/${size}x${size}/apps"
+  mkdir -p "$dest"
+  cp "$src" "$dest/$APP_ID.png"
+done
 
 cat > "$DESKTOP_DIR/$APP_ID.desktop" <<DESKTOP
 [Desktop Entry]
@@ -65,7 +71,7 @@ DESKTOP
 command -v update-desktop-database >/dev/null 2>&1 \
   && update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
 command -v gtk-update-icon-cache >/dev/null 2>&1 \
-  && gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+  && gtk-update-icon-cache -f -t "$ICON_ROOT" 2>/dev/null || true
 
 echo
 echo "Installed."

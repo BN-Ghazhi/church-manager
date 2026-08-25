@@ -49,7 +49,7 @@ INSTALL_DIR="$HOME/.local/lib/$APP_ID"
 DATA_DIR="$HOME/.local/share/$APP_ID"
 BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
-ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+ICON_ROOT="$HOME/.local/share/icons/hicolor"
 
 # When double-clicked there is no terminal to read, so report through a dialog
 # if one is available and fall back to stdout otherwise.
@@ -90,10 +90,17 @@ tail -n "+$ARCHIVE_LINE" "$0" | tar xz -C "$WORK" 2>/dev/null \
 # Replace any previous install so an upgrade leaves no stale libraries. The
 # database lives in a separate directory and is deliberately untouched.
 rm -rf "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR" "$ICON_DIR" "$DATA_DIR"
+mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR" "$DATA_DIR"
 cp -a "$WORK/bundle/." "$INSTALL_DIR/"
 ln -sf "$INSTALL_DIR/churchms" "$BIN_DIR/churchms"
-[[ -f "$WORK/icon.png" ]] && cp "$WORK/icon.png" "$ICON_DIR/$APP_ID.png"
+# Every icon-theme size the payload carries.
+for size in 16 24 32 48 64 128 256 512; do
+  src="$WORK/icons/$size.png"
+  [[ -f "$src" ]] || continue
+  dest="$ICON_ROOT/${size}x${size}/apps"
+  mkdir -p "$dest"
+  cp "$src" "$dest/$APP_ID.png"
+done
 
 cat > "$DESKTOP_DIR/$APP_ID.desktop" <<DESKTOP
 [Desktop Entry]
@@ -168,7 +175,9 @@ rm -f "$HOME/.local/bin/churchms"
 rm -f "$HOME/.local/share/applications/$APP_ID.desktop"
 rm -f "$HOME/.local/share/applications/$APP_ID-uninstall.desktop"
 rm -f "$HOME/.local/share/applications/church-management-installer.desktop"
-rm -f "$HOME/.local/share/icons/hicolor/256x256/apps/$APP_ID.png"
+for size in 16 24 32 48 64 128 256 512; do
+  rm -f "$HOME/.local/share/icons/hicolor/${size}x${size}/apps/$APP_ID.png"
+done
 
 command -v update-desktop-database >/dev/null 2>&1 \
   && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
@@ -234,6 +243,8 @@ mkdir -p "$STAGE/bundle"
 cp -a "$BUNDLE/." "$STAGE/bundle/"
 [[ -f "$PROJECT_ROOT/packaging/icon.png" ]] && \
   cp "$PROJECT_ROOT/packaging/icon.png" "$STAGE/icon.png"
+[[ -d "$PROJECT_ROOT/packaging/icons" ]] && \
+  cp -a "$PROJECT_ROOT/packaging/icons" "$STAGE/icons"
 
 tar czf - -C "$STAGE" . >> "$INSTALLER"
 chmod +x "$INSTALLER"

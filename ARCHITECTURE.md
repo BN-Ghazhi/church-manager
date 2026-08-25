@@ -451,7 +451,27 @@ a soft-deleted member can still be restored, so their photo is not litter. Both
 are tested, since a mistake there destroys files rather than merely displaying
 something wrong.
 
-### 2.15 Branding
+### 2.15 The app icon
+
+`packaging/make-icons.py` is the single source: it draws the cross at each target
+size and writes the Linux icon-theme sizes, the Windows `.ico`, the macOS
+`.appiconset` and the web PWA icons.
+
+Drawn rather than scaled, because the source artwork was 256px and macOS asks for
+1024 — upscaling is visibly soft, and this is the first thing anyone sees of the
+app. Drawing also makes the shape a few lines to adjust instead of a binary to
+re-export.
+
+Two details that were wrong and are easy to get wrong again. macOS and web still
+carried **Flutter's logo**, because `flutter create` writes those and nothing had
+replaced them; only Linux and Windows had been done by hand. And Linux installed
+a single 256px icon, so GNOME downscaled it for the 32px window list — all eight
+icon-theme sizes are installed now, by the `.deb`, the self-extracting installer
+and `install-linux.sh` alike. The maskable web icons bleed to the canvas edges,
+since a launcher crops them to its own shape and transparent corners would show
+as a gap.
+
+### 2.16 Branding
 
 The sidebar logo and the sign-in background can be replaced from Settings. The
 chosen file is **copied into the app's own storage** rather than referenced where
@@ -460,7 +480,7 @@ moves, and the app would silently lose its logo. Only the copy's path lives in
 the settings table, and a missing file falls back to the built-in default rather
 than rendering a broken box, because the database can outlive the image.
 
-### 2.16 Persistence
+### 2.17 Persistence
 
 One SQLite file, via Drift, in the platform's application-support directory. No
 server, no setup, works offline. The schema is `lib/db/tables.dart`; generated
@@ -483,7 +503,7 @@ Each install has its **own** database — a branch laptop is not visible to
 headquarters without a shared machine or a server. `BRANCH-DATA.md` lays out the
 three options and what each costs.
 
-### 2.17 Notable decisions and their reasons
+### 2.18 Notable decisions and their reasons
 
 **Charts take a `ValueFormat` enum, not a formatter function.** Keeps chart
 call sites declarative and consistent, and avoids passing closures through

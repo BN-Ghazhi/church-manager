@@ -30,13 +30,19 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/DEBIAN" \
          "$STAGE/opt/$APP_ID" \
          "$STAGE/usr/bin" \
-         "$STAGE/usr/share/applications" \
-         "$STAGE/usr/share/icons/hicolor/256x256/apps"
+         "$STAGE/usr/share/applications"
 
 cp -a "$BUNDLE/." "$STAGE/opt/$APP_ID/"
-[[ -f "$PROJECT_ROOT/packaging/icon.png" ]] && \
-  cp "$PROJECT_ROOT/packaging/icon.png" \
-     "$STAGE/usr/share/icons/hicolor/256x256/apps/$APP_ID.png"
+
+# Every icon-theme size, so the dock and window list get a drawn frame rather
+# than a downscaled 256px one.
+for size in 16 24 32 48 64 128 256 512; do
+  src="$PROJECT_ROOT/packaging/icons/$size.png"
+  [[ -f "$src" ]] || continue
+  dest="$STAGE/usr/share/icons/hicolor/${size}x${size}/apps"
+  mkdir -p "$dest"
+  cp "$src" "$dest/$APP_ID.png"
+done
 
 ln -sf "/opt/$APP_ID/churchms" "$STAGE/usr/bin/churchms"
 
