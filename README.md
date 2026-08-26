@@ -40,8 +40,20 @@ disabled rather than hidden — a church that grows should be able to see the ap
 handles it. The branch switcher is gone, since there is only one branch, and
 everything files against it automatically.
 
-Switching it back on is one line. No data model changes are involved: a
-single-branch church is the multi-branch case with one row.
+### Switching it on
+
+Change one line in `lib/config/features.dart`:
+
+```dart
+static const multiBranchEnabled = true;
+```
+
+Then rebuild. That restores **Add branch**, editing branches, and the branch
+switcher in the top bar (which needs two or more branches before it appears).
+
+No data model changes are involved — a single-branch church is the multi-branch
+case with one row — and the test suite passes with the flag either way, so
+flipping it is safe to try and safe to undo.
 
 ## Switched-off modules
 

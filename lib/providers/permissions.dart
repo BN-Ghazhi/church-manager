@@ -55,7 +55,12 @@ final visibleBranchesProvider = Provider<List<Branch>>((ref) {
 
 /// Whether the current user may switch between branches at all.
 final canSwitchBranchProvider = Provider<bool>(
-  (ref) => ref.watch(visibleBranchIdsProvider).length > 1,
+  // Already false with a single branch; pinned to the flag as well so the
+  // switcher cannot appear while multi-branch is switched off, however a second
+  // branch reached the database.
+  (ref) =>
+      Features.multiBranchEnabled &&
+      ref.watch(visibleBranchIdsProvider).length > 1,
 );
 
 /// Whether the current user may see any branch other than their own.

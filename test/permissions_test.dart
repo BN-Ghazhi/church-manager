@@ -84,7 +84,10 @@ void main() {
     test('a super admin sees every branch', () async {
       final c = await containerFor(userWithRole(UserRole.superAdmin));
       expect(c.read(visibleBranchIdsProvider).length, branches.length);
-      expect(c.read(canSwitchBranchProvider), isTrue);
+      // Switching also requires multi-branch to be switched on, so this tracks
+      // the flag rather than hard-coding today's value.
+      expect(c.read(canSwitchBranchProvider),
+          equals(Features.multiBranchEnabled));
       expect(c.read(selectedBranchProvider), isNull); // consolidated
     });
 
