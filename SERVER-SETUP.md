@@ -58,82 +58,237 @@ database itself never faces the internet.
 
 About an evening. Nothing here touches the church's data.
 
-## Step 1: Check what that laptop's connection gives you
+## Step 1: Find out if you can be reached from the internet
 
-On the Windows laptop, open **Command Prompt** and run:
+**Everything in Part 1 happens on the Windows laptop** — the one that will be the
+server. Not the machine the app was built on. Sit at that laptop now.
+
+### 1a. Open the black command window
+
+Press the **Windows key** on the keyboard. Type:
+
+```
+cmd
+```
+
+Press **Enter**. A black window opens with white text ending in `>`. This is
+Command Prompt. Everything below gets typed into it.
+
+> You can copy a command from here and paste it in: click inside the black
+> window, then press **Ctrl+V** (or right-click, which also pastes).
+
+### 1b. Run the test
+
+Type this exactly, then press **Enter**:
+
+```
+tracert -h 4 8.8.8.8
+```
+
+It takes about 20 seconds. It is drawing the first four steps of the path from
+this laptop out to the internet.
+
+### 1c. Read the answer
+
+You will see something like this:
+
+```
+Tracing route to dns.google [8.8.8.8]
+
+  1     2 ms     1 ms     2 ms  192.168.0.1
+  2     3 ms     2 ms     3 ms  10.92.181.66      <-- LOOK AT THIS LINE
+  3     *        *         *     Request timed out.
+  4    48 ms    50 ms    49 ms  41.x.x.x
+```
+
+**Look at line 2** (and line 3 if line 2 says "Request timed out").
+
+Line 1 is always your own router — usually `192.168.something`. That is normal
+and tells you nothing.
+
+Now check what line 2 starts with:
+
+| Line 2 starts with | Meaning |
+|---|---|
+| `10.` | **CGNAT** — use the tunnel |
+| `100.64.` to `100.127.` | **CGNAT** — use the tunnel |
+| `172.16.` to `172.31.` | **CGNAT** — use the tunnel |
+| `192.168.` | **CGNAT** — use the tunnel |
+| anything else (e.g. `41.`, `154.`, `196.`) | You may have a real public IP |
+
+**Write down what line 2 says.** That single line decides everything.
+
+### 1d. What it means
+
+**If it was CGNAT** (the likely answer on MTN, Vodafone or AirtelTigo home
+internet): your internet provider shares one public address between many
+customers. There is no address that belongs only to you, so there is nothing to
+"open a port" on. No router setting can change this — it is above your router.
+
+This is not a problem. Continue to Step 2; the tunnel handles it.
+
+**If line 2 was a public address**: you *might* be able to open a port on your
+router instead. The tunnel is still simpler, safer and free, so continue to
+Step 2 anyway — but tell me what you saw, because it opens up an option.
+
+### 1e. Optional: a second confirmation
+
+If you want to double-check, type:
 
 ```
 curl https://api.ipify.org
+```
+
+That prints the address the internet sees you as, for example
+`154.161.50.93`. Then type:
+
+```
 ipconfig
 ```
 
-Compare the address `curl` prints with the **Default Gateway** under `ipconfig`,
-then open the gateway address in a browser (usually `192.168.0.1`) and find its
-**WAN** or **Internet** IP.
+Look for **Default Gateway** — that is your router, e.g. `192.168.0.1`. Open
+that number in a web browser, sign in to the router (the password is often on a
+sticker underneath it), and find the page showing **WAN IP** or **Internet IP**.
 
-- If the router's WAN IP **matches** what `curl` printed → you have a real public
-  IP. Port forwarding is possible, though a tunnel is still simpler and safer.
-- If they **differ**, or the WAN IP starts `100.64.`–`100.127.`, `10.`, or
-  `192.168.` → **CGNAT**. Port forwarding cannot work. Use the tunnel.
+If the router's WAN IP is *different* from what `curl` printed, that is CGNAT
+confirmed. If they match, you have a real public IP.
 
-On the connection I measured, it is CGNAT. Expect the same if the laptop is on
-the same router.
+You do not need this step — `tracert` already answered it. It is only here if you
+want to see it twice.
 
-## Step 2: Run a test web page
+## Step 2: Put a test page on the laptop
 
-**No Docker needed** — see "Do we need Docker?" below. Windows 10 ships with
-PowerShell, which can serve a page for this test.
+Nothing to install. Windows 10 can already do this.
 
-Open **PowerShell** (not Command Prompt) and paste this in one go:
+### 2a. Open PowerShell
+
+Press the **Windows key**. Type:
+
+```
+powershell
+```
+
+Press **Enter**. A **blue** window opens. (Step 1 used the black one; this step
+needs the blue one — they understand different commands.)
+
+### 2b. Start the test page
+
+Copy the whole block below — all nine lines — and paste it into the blue window
+(click inside it, then **Ctrl+V**), then press **Enter**:
 
 ```powershell
-$listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add('http://localhost:8080/')
-$listener.Start()
-Write-Host 'Test server running on http://localhost:8080 - Ctrl+C to stop'
-while ($listener.IsListening) {
-  $ctx = $listener.GetContext()
-  $html = [Text.Encoding]::UTF8.GetBytes('<h1>Church server test - it works</h1>')
-  $ctx.Response.ContentType = 'text/html'
-  $ctx.Response.OutputStream.Write($html, 0, $html.Length)
-  $ctx.Response.Close()
+$l = New-Object System.Net.HttpListener
+$l.Prefixes.Add('http://localhost:8080/')
+$l.Start()
+'Test page running. Leave this window open.'
+while ($l.IsListening) {
+  $c = $l.GetContext()
+  $b = [Text.Encoding]::UTF8.GetBytes('<h1>Church server test - it works</h1>')
+  $c.Response.OutputStream.Write($b, 0, $b.Length); $c.Response.Close()
 }
 ```
 
-Open **http://localhost:8080** in the browser. You should see
-"Church server test - it works".
+It prints "Test page running" and then appears to hang. **That is correct** — it
+is waiting for visitors. Leave this window open for the rest of Part 1.
 
-Leave that PowerShell window running. Right now only this laptop can see it — the
-next step changes that.
+### 2c. Check it
 
-## Step 3: Install the tunnel
+Open a web browser on that same laptop and go to:
 
-We use **ngrok** because its free tier includes one permanent address, and it
-needs no domain purchase.
+```
+http://localhost:8080
+```
 
-1. Sign up at **ngrok.com** (free)
-2. Dashboard → **Setup & Installation** → download for Windows
-3. Unzip `ngrok.exe` somewhere sensible, e.g. `C:\ngrok\`
-4. Dashboard → **Your Authtoken** → copy it
-5. In Command Prompt:
+You should see **"Church server test - it works"**.
+
+Only this laptop can see it so far. Step 3 fixes that.
+
+> If nothing appears, the blue window will show an error. Send me what it says.
+
+## Step 3: Get the tunnel
+
+### 3a. Make a free account
+
+In the browser, go to **https://ngrok.com** and click **Sign up**. It is free —
+use Google sign-in if that is easier. No card needed.
+
+### 3b. Download it
+
+Once signed in you land on a **Setup & Installation** page. Choose **Windows**,
+then click **Download**. You get a file like `ngrok-v3-stable-windows-amd64.zip`
+in your Downloads folder.
+
+### 3c. Unzip it to a simple place
+
+1. Open **File Explorer** → **Downloads**
+2. Right-click the ngrok zip → **Extract All...**
+3. In the box, replace the path with exactly:
+
+```
+C:\ngrok
+```
+
+4. Click **Extract**
+
+You should now have `C:\ngrok\ngrok.exe`. Check in File Explorer by typing
+`C:\ngrok` into its address bar.
+
+### 3d. Give ngrok your token
+
+Back on the ngrok website, that same setup page shows a command containing your
+personal token. It looks like:
+
+```
+ngrok config add-authtoken 2abcXYZ...longstring...
+```
+
+**Copy that whole line from the website.**
+
+Now open a **new black Command Prompt** (Windows key → `cmd` → Enter) and type:
 
 ```
 cd C:\ngrok
-ngrok config add-authtoken PASTE_YOUR_TOKEN_HERE
 ```
 
-6. Dashboard → **Domains** → **Create Domain**. You get something like
-   `kgc-church.ngrok-free.app`. **Write it down** — this is the address the apps
-   will use, and it does not change.
+Press Enter. Then paste the line you copied from the website and press Enter.
 
-## Step 4: Expose the test page
+It should reply `Authtoken saved to configuration file`.
+
+### 3e. Claim your permanent address
+
+On the ngrok website, in the left-hand menu click **Domains** (under
+"Universal Gateway"), then **+ Create Domain** or **+ New Domain**.
+
+The free plan gives you one. You will get something like:
+
+```
+kgc-church.ngrok-free.app
+```
+
+**Write this down.** It never changes, and it is the address every branch's app
+will point at.
+
+## Step 4: Open it to the internet
+
+In the same black Command Prompt (still in `C:\ngrok`), type this — replacing the
+address with **your** one from step 3e:
 
 ```
 ngrok http --url=kgc-church.ngrok-free.app 8080
 ```
 
-Leave that window open. Then **on your phone, using mobile data, not the church
-wifi**, open:
+Press Enter. The window fills with a status display showing `Session Status
+online` and your address.
+
+**Leave this window open too.** You now have two windows running: the blue one
+(the test page) and this black one (the tunnel).
+
+### The moment of truth
+
+Take your **phone**. Turn **wifi off** so it uses mobile data — this is important,
+because you must come in from the internet, not from inside the house.
+
+In the phone's browser, go to your address:
 
 ```
 https://kgc-church.ngrok-free.app
@@ -146,13 +301,33 @@ with HTTPS, without touching the router.
 > ngrok's free tier shows a one-time warning page in a browser. Click through it.
 > The apps will not see it — it only affects browsers.
 
-## Step 5: Tidy up
+## If something goes wrong
 
-Press `Ctrl+C` in both windows — the PowerShell test server and ngrok.
+| What you see | What it means | What to do |
+|---|---|---|
+| `'ngrok' is not recognized` | You are not in the right folder | Type `cd C:\ngrok` first, then the command again |
+| `'tracert' is not recognized` | You are in PowerShell, not Command Prompt | Windows key → `cmd` → Enter, and try again |
+| Blue window: `Access is denied` | Windows blocked the port | Close it, right-click **PowerShell** → **Run as administrator**, paste again |
+| Browser on the laptop shows nothing at `localhost:8080` | The blue window is not running | Check it still says "Test page running" |
+| Phone shows "tunnel not found" | ngrok is not running, or the address is mistyped | Check the black window still shows `Session Status online`; check spelling |
+| Phone shows an ngrok warning page | Normal on the free plan | Click **Visit Site** — the apps never see this |
+| Phone shows nothing at all | Phone may still be on wifi | Turn wifi off on the phone; you must arrive from the internet |
+| `ERR_NGROK_...` with a number | ngrok has an explanation | Send me the error number |
 
-**Report back at this point.** If step 4 worked, the rest is software and I will
-write it. If it did not, tell me what happened — that changes the approach and it
-is much better to know now.
+## Step 5: Stop it for now
+
+Click each window and press **Ctrl+C**, then close them. Nothing is left running,
+and nothing has been installed except ngrok.
+
+## Then tell me
+
+Two things:
+
+1. **What line 2 of `tracert` said** (step 1c) — the CGNAT answer
+2. **Whether the page appeared on your phone** (step 4)
+
+If yes to (2), the hard part is done and I will write the API. If no, tell me what
+you saw instead — that changes the approach, and knowing now saves weeks.
 
 ---
 
