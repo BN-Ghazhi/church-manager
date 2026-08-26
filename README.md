@@ -247,6 +247,13 @@ To share with other Linux machines, `./packaging/build-deb.sh` produces a
 targets. Everything is prepared; run `packaging\build-windows.ps1` there, or
 use the included GitHub Actions workflow to get a build without one.
 
+From Actions, download the artifact named **`INSTALLER-windows-setup-exe`**. It
+installs to Program Files, adds desktop and Start Menu shortcuts, and registers
+an uninstaller. The sibling artifact
+`RUNS-WITHOUT-INSTALLING-windows-folder` is the raw build that runs from a folder
+without installing — useful for a quick look, but not an install. Every build
+verifies the installer by running it and checking those four things landed.
+
 Full detail, including backups and a caution about each install having its own
 separate database: **[packaging/README.md](packaging/README.md)**.
 
