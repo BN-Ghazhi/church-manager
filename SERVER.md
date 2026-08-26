@@ -3,9 +3,17 @@
 How to run the church's data on a Windows 10 laptop you own, with the desktop
 consoles and (later) mobile apps reading from it over the internet.
 
-Decisions already taken: **Docker on the Windows laptop**, a **Dart API server**
-reusing this app's own code, **not Tailscale**, branches in **other towns**, and
-**offline writes that sync when the server returns**.
+Decisions already taken: a **Dart API server** reusing this app's own code, **not
+Tailscale**, branches in **other towns**, and **offline writes that sync when the
+server returns**.
+
+**Docker and Postgres were dropped** after sizing the workload — see
+`SERVER-SETUP.md` §"Do we need Docker?". Five branches over ten years comes to
+~1.8M rows and ~344 MB, comfortably inside SQLite, whose only real limit is one
+writer at a time and that is ~10–20 concurrent writers away. The server is a
+single self-contained `.exe` plus one database file, run as a Windows service.
+Same engine the app already uses, so the schema, migrations and 189 tests carry
+over.
 
 ---
 
@@ -110,41 +118,24 @@ to reset its password.
 church management/
   lib/                        the Flutter client, structure unchanged
   packages/churchms_core/     plain Dart: models, permissions, password, rules
-  server/                     shelf API + Postgres, depends on churchms_core
-  deploy/
-    docker-compose.yml        Postgres + the API, one command to start
-    .env.example              secrets, never committed
+  server/                     shelf API + Drift/SQLite, depends on churchms_core
 ```
 
-Docker Desktop on Windows 10 requires **WSL2** and virtualisation enabled in the
-BIOS. Two containers:
+Deployed as one native binary, built with `dart compile exe`, needing nothing
+installed beside it:
 
-```yaml
-# deploy/docker-compose.yml  (sketch)
-services:
-  db:
-    image: postgres:16
-    restart: unless-stopped          # comes back after a power cut
-    environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - churchdata:/var/lib/postgresql/data
-
-  api:
-    build: ../server
-    restart: unless-stopped
-    ports: ["8080:8080"]
-    depends_on: [db]
-    environment:
-      DATABASE_URL: postgres://postgres:${DB_PASSWORD}@db:5432/church
-      JWT_SECRET: ${JWT_SECRET}
-
-volumes:
-  churchdata:
+```
+C:\ChurchServer\
+  church-server.exe
+  church.sqlite
+  server.log
 ```
 
-`restart: unless-stopped` matters more than it looks: it is what brings the
-church back online without you after a reboot or an outage.
+Registered as a Windows service (`sc create ... start= auto`, with
+`sc failure ... actions= restart/5000`) so it starts at boot and restarts on
+crash without anyone logging in. ngrok the same. That is what brings the church
+back online without you after a power cut — the thing `restart: unless-stopped`
+was there for, minus two gigabytes of Docker.
 
 ---
 
@@ -319,10 +310,10 @@ names one machine's disk. Member photos use bare filenames and are fine.
 
 | Phase | What | Weeks |
 |---|---|---|
-| 0 | Prove the tunnel from the Windows laptop; Docker Desktop + WSL2; both restart after a forced power cut | 0.5–1 |
+| 0 | Prove the tunnel from the Windows laptop reaches a phone on mobile data; server and tunnel both restart after a forced power cut | 0.5 |
 | 1 | **UUID ids**, plus timestamps and soft deletes on the three tables that lack them. Nothing else can be built on the current ids | 1 |
 | 2 | Extract `packages/churchms_core/`. **189 tests must still pass** | 1 |
-| 3 | Postgres + API + migration + auth + **read** endpoints with server-side branch scoping | 2 |
+| 3 | API + auth + **read** endpoints with server-side branch scoping | 2 |
 | 4 | **Milestone:** two machines, correctly scoped live data from the laptop, over the internet | 2 |
 | 5 | Writes, the 14 rules, real 4xx surfaced in forms | 3 |
 | 6 | **Offline outbox and sync**, with the conflict policy from §4 and a visible pending-changes indicator | 3–4 |
@@ -356,7 +347,7 @@ check the machine:
 - power cut (dumsor) at that location
 - MTN outage
 - the lid closed, or the laptop taken out
-- Docker or the tunnel not restarting after a reboot
+- the server or the tunnel service not restarting after a reboot
 
 Mitigations: a UPS, mobile-data failover, `restart: unless-stopped` on every
 container, the tunnel as a Windows service, and disabling suspend-on-lid-close.

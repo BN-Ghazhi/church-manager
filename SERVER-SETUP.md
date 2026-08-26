@@ -79,39 +79,34 @@ then open the gateway address in a browser (usually `192.168.0.1`) and find its
 On the connection I measured, it is CGNAT. Expect the same if the laptop is on
 the same router.
 
-## Step 2: Install Docker Desktop
+## Step 2: Run a test web page
 
-1. Download from **docker.com/products/docker-desktop**
-2. Run the installer, leave **"Use WSL 2"** ticked
-3. Restart when asked
+**No Docker needed** — see "Do we need Docker?" below. Windows 10 ships with
+PowerShell, which can serve a page for this test.
 
-If it complains about virtualisation: restart, enter the BIOS (usually F2, F10 or
-Del at startup), enable **Intel VT-x** or **AMD-V**, save and exit.
+Open **PowerShell** (not Command Prompt) and paste this in one go:
 
-Check it works — Command Prompt:
-
-```
-docker --version
-docker run hello-world
-```
-
-The second prints a paragraph beginning "Hello from Docker!". If both work, Docker
-is fine.
-
-## Step 3: Run a test web page
-
-Still in Command Prompt:
-
-```
-docker run -d -p 8080:80 --name webtest nginx
+```powershell
+$listener = New-Object System.Net.HttpListener
+$listener.Prefixes.Add('http://localhost:8080/')
+$listener.Start()
+Write-Host 'Test server running on http://localhost:8080 - Ctrl+C to stop'
+while ($listener.IsListening) {
+  $ctx = $listener.GetContext()
+  $html = [Text.Encoding]::UTF8.GetBytes('<h1>Church server test - it works</h1>')
+  $ctx.Response.ContentType = 'text/html'
+  $ctx.Response.OutputStream.Write($html, 0, $html.Length)
+  $ctx.Response.Close()
+}
 ```
 
-Open **http://localhost:8080** in the browser. You should see "Welcome to nginx!".
+Open **http://localhost:8080** in the browser. You should see
+"Church server test - it works".
 
-That is a web server running on the laptop. Right now only that laptop can see
-it — the next step is what changes that.
+Leave that PowerShell window running. Right now only this laptop can see it — the
+next step changes that.
 
-## Step 4: Install the tunnel
+## Step 3: Install the tunnel
 
 We use **ngrok** because its free tier includes one permanent address, and it
 needs no domain purchase.
@@ -131,7 +126,7 @@ ngrok config add-authtoken PASTE_YOUR_TOKEN_HERE
    `kgc-church.ngrok-free.app`. **Write it down** — this is the address the apps
    will use, and it does not change.
 
-## Step 5: Expose the test page
+## Step 4: Expose the test page
 
 ```
 ngrok http --url=kgc-church.ngrok-free.app 8080
@@ -144,23 +139,18 @@ wifi**, open:
 https://kgc-church.ngrok-free.app
 ```
 
-If you see "Welcome to nginx!" — **that is the whole problem solved.** A service
-on the laptop is reachable from the internet, through CGNAT, with HTTPS, without
-touching the router.
+If you see "Church server test - it works" — **that is the whole problem
+solved.** A service on the laptop is reachable from the internet, through CGNAT,
+with HTTPS, without touching the router.
 
 > ngrok's free tier shows a one-time warning page in a browser. Click through it.
 > The apps will not see it — it only affects browsers.
 
-## Step 6: Tidy up
+## Step 5: Tidy up
 
-```
-docker stop webtest
-docker rm webtest
-```
+Press `Ctrl+C` in both windows — the PowerShell test server and ngrok.
 
-Stop ngrok with `Ctrl+C`.
-
-**Report back at this point.** If step 5 worked, the rest is software and I will
+**Report back at this point.** If step 4 worked, the rest is software and I will
 write it. If it did not, tell me what happened — that changes the approach and it
 is much better to know now.
 
@@ -172,20 +162,65 @@ Sketched so you can see where this goes. I write the code; you run it.
 
 ## What will run on the laptop
 
+**One file. No Docker, no Postgres, no runtime to install.**
+
 ```
-docker compose up -d
+C:\ChurchServer\
+  church-server.exe          the API - one self-contained binary
+  church.sqlite              the data
+  server.log
 ```
 
-Two containers:
+`dart compile exe` produces a native Windows executable with nothing to install
+beside it — the same way `churchms.exe` needs no Dart on your machine today.
 
-| Container | What it does |
-|---|---|
-| `db` | Postgres, holding the church's data. **Not exposed to the internet.** |
-| `api` | The Dart API. The only thing the tunnel points at. |
+Installed as a **Windows Service** so it starts at boot and restarts if it
+crashes, without anyone logging in:
 
-Both get `restart: unless-stopped`, so they come back by themselves after a power
-cut or a reboot. That matters more than it sounds — it is what stops "the server
-is down" becoming a phone call to you every time the power blinks.
+```
+sc create ChurchServer binPath= "C:\ChurchServer\church-server.exe" start= auto
+sc failure ChurchServer reset= 0 actions= restart/5000
+```
+
+ngrok runs as a service the same way. Two services, both automatic, nothing to
+remember after a power cut.
+
+## Do we need Docker?
+
+**No.** It was in the original plan because that is the conventional production
+setup, but for this church it is cost without benefit:
+
+| | Docker + Postgres | Single .exe + SQLite |
+|---|---|---|
+| To install | Docker Desktop, WSL2, BIOS virtualisation | nothing |
+| Disk | ~2 GB before your data | ~15 MB |
+| RAM idle | ~1–2 GB | ~30 MB |
+| Things that can break | Docker, WSL2, 2 containers, volumes | one process |
+| Backup | `pg_dump`, then copy | copy one file |
+| Concurrent writers | thousands | ~10–20 |
+
+The last row is the only one favouring Postgres, and it is far beyond this
+church. Sized honestly for **five branches over ten years** — 2,000 members, three
+services a week each, 150 check-ins per service:
+
+```
+attendance rows        7,800
+check-in rows      1,170,000
+giving rows          624,000
+TOTAL              1,803,800 rows   ~344 MB
+```
+
+SQLite handles millions of rows and databases into the terabytes. Its real limit
+is one writer at a time, and writes here are sub-millisecond — so roughly 10–20
+simultaneous writers before it matters. A church with 5–10 staff accounts is two
+orders of magnitude below that.
+
+It is also the same engine the app already uses, so the schema, the migrations
+and 189 tests carry over unchanged.
+
+**When Postgres would be worth it:** dozens of branches writing at once, or
+several churches on one server. Both are a long way off, and the API in front
+means swapping the database later does not touch the apps.
 
 ## What the console apps will do
 
@@ -199,7 +234,8 @@ app. Records entered while the internet is down are kept and sent when it return
 In order:
 
 1. **Unique ids** — two offline machines currently generate the same id, so one
-   member would silently overwrite another. Must be fixed first.
+   member would silently overwrite another. Demonstrated, and must be fixed
+   first.
 2. Shared core package, so the server reuses the app's models, permission rules
    and password hashing (proven to work — `SERVER.md` §2).
 3. The API: sign-in with real tokens, then read endpoints, then writes.
