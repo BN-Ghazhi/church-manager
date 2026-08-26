@@ -117,12 +117,35 @@ jobs:
           }
           Write-Host "uninstall:  $($key.UninstallString)"
 
-          # The shortcut must carry the app icon, not a generic one.
+          # The shortcut must carry the app icon, not a generic one. Checking
+          # the path is not enough — an exe with no icon resource still yields a
+          # path, and Windows then draws its blank default. So extract the icon
+          # and assert it is really there and non-trivial.
           $shell = New-Object -ComObject WScript.Shell
           $lnk = $shell.CreateShortcut($desktop)
-          Write-Host "icon:       $($lnk.IconLocation)"
+          Write-Host "icon path:  $($lnk.IconLocation)"
+          if (-not $lnk.IconLocation.ToLower().Contains('churchms.exe')) {
+            throw "SHORTCUT ICON WRONG: $($lnk.IconLocation)"
+          }
+
+          Add-Type -AssemblyName System.Drawing
+          $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($app)
+          if (-not $ico) { throw "NO ICON in $app" }
+          Write-Host "icon size:  $($ico.Width)x$($ico.Height)"
+
+          # A real multi-size .ico is several KB. A missing or placeholder icon
+          # comes out tiny, so this catches a silently-lost icon resource.
+          $bmp = $ico.ToBitmap()
+          $ms = New-Object System.IO.MemoryStream
+          $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+          Write-Host "icon bytes: $($ms.Length)"
+          if ($ms.Length -lt 500) {
+            throw "ICON LOOKS EMPTY: only $($ms.Length) bytes"
+          }
+
           Write-Host ""
-          Write-Host "Installer verified: installs, shortcuts created, uninstaller registered."
+          Write-Host "Installer verified: installs to Program Files, shortcuts"
+          Write-Host "created with the app icon, uninstaller registered."
         shell: pwsh
 
       # This is the one to download. It installs to Program Files, adds Start
