@@ -47,6 +47,37 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter build windows --release
 
+      # Gate before packaging: refuse to publish a build whose app icon is
+      # Flutter's default. An earlier artifact shipped with it and nothing
+      # caught that, which left a Flutter-branded churchms.exe in circulation.
+      - name: Reject Flutter's default icon
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $exe = "build\windows\x64\runner\Release\churchms.exe"
+          $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($exe)
+          $bmp = $ico.ToBitmap()
+          $dark = 0; $blue = 0; $total = $bmp.Width * $bmp.Height
+          for ($x = 0; $x -lt $bmp.Width; $x++) {
+            for ($y = 0; $y -lt $bmp.Height; $y++) {
+              $c = $bmp.GetPixel($x, $y)
+              if ($c.A -gt 200) {
+                if ($c.R -lt 60 -and $c.G -lt 60 -and $c.B -lt 60) { $dark++ }
+                if ($c.B -gt $c.R + 40) { $blue++ }
+              }
+            }
+          }
+          $darkPct = [int]($dark * 100 / $total)
+          $bluePct = [int]($blue * 100 / $total)
+          Write-Host "app exe icon: dark=$darkPct% blue=$bluePct%"
+          if ($bluePct -gt 10) {
+            throw "BUILD REJECTED: churchms.exe carries Flutter's default icon"
+          }
+          if ($darkPct -lt 40) {
+            throw "BUILD REJECTED: churchms.exe icon is not the church icon"
+          }
+          Write-Host "app icon is the church icon - proceeding to package"
+        shell: pwsh
+
       # The raw build: churchms.exe plus the DLLs and data/ directory it needs
       # beside it. This one does NOT install anything — it just runs from the
       # folder. Named to say so, because "portable" was mistaken for the
