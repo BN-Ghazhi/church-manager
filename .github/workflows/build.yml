@@ -129,8 +129,12 @@ jobs:
           }
 
           Add-Type -AssemblyName System.Drawing
-          $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($app)
-          if (-not $ico) { throw "NO ICON in $app" }
+          # Resolve the icon the way Explorer does for the shortcut's target,
+          # rather than reading the .ico file we shipped — this is what the user
+          # actually sees on the desktop.
+          $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($lnk.TargetPath)
+          if (-not $ico) { throw "NO ICON for $($lnk.TargetPath)" }
+          Write-Host "resolved:   $($lnk.TargetPath)"
           Write-Host "icon size:  $($ico.Width)x$($ico.Height)"
 
           # A real multi-size .ico is several KB. A missing or placeholder icon

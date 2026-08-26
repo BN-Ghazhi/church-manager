@@ -71,6 +71,13 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; \
   Comment: "Kingdom Grace Chapel management console"; Tasks: desktopicon
 
 [Run]
+; Windows caches shortcut icons aggressively and keeps showing the previous one
+; after an upgrade — an earlier build of this app shipped Flutter's default
+; icon, so anyone upgrading sees that until the cache is rebuilt. ie4uinit is
+; the documented way to force it, and is present on every supported Windows.
+Filename: "{sys}\ie4uinit.exe"; Parameters: "-show"; \
+  Flags: runhidden skipifdoesntexist; StatusMsg: "Refreshing icons..."
+
 Filename: "{app}\{#AppExe}"; Description: "Start {#AppName}"; \
   Flags: nowait postinstall skipifsilent
 
