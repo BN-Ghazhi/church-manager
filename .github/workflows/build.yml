@@ -47,12 +47,14 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter build windows --release
 
-      # The portable folder is the build itself: churchms.exe plus the DLLs and
-      # data/ directory it needs beside it. Useful even without an installer.
-      - name: Upload portable build
+      # The raw build: churchms.exe plus the DLLs and data/ directory it needs
+      # beside it. This one does NOT install anything — it just runs from the
+      # folder. Named to say so, because "portable" was mistaken for the
+      # installer and led to "it only runs, it does not install".
+      - name: Upload portable build (runs without installing)
         uses: actions/upload-artifact@v4
         with:
-          name: church-management-windows-portable
+          name: RUNS-WITHOUT-INSTALLING-windows-folder
           path: build/windows/x64/runner/Release/
           if-no-files-found: error
 
@@ -71,10 +73,64 @@ jobs:
           & $iscc "packaging\windows-installer.iss"
         shell: pwsh
 
+      # Proves the installer installs, rather than trusting that it compiled.
+      # Runs it silently, then asserts the app landed on disk, the Start Menu
+      # and desktop shortcuts exist, and Windows registered an uninstaller.
+      # A setup .exe that merely unpacks and runs would fail here.
+      - name: Verify the installer actually installs
+        run: |
+          $setup = Get-ChildItem dist\*.exe | Select-Object -First 1
+          Write-Host "Running $($setup.Name) silently..."
+          # /SILENT with the desktop-icon task, then wait for it to finish.
+          Start-Process -FilePath $setup.FullName `
+            -ArgumentList '/SILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=desktopicon' `
+            -Wait
+
+          $app = Join-Path $env:ProgramFiles 'Church Management\churchms.exe'
+          if (-not (Test-Path $app)) {
+            throw "NOT INSTALLED: expected $app"
+          }
+          Write-Host "installed:  $app"
+
+          $startMenu = Join-Path $env:ProgramData `
+            'Microsoft\Windows\Start Menu\Programs\Church Management\Church Management.lnk'
+          if (-not (Test-Path $startMenu)) {
+            throw "NO START MENU SHORTCUT: expected $startMenu"
+          }
+          Write-Host "start menu: $startMenu"
+
+          $desktop = Join-Path $env:PUBLIC 'Desktop\Church Management.lnk'
+          if (-not (Test-Path $desktop)) {
+            throw "NO DESKTOP SHORTCUT: expected $desktop"
+          }
+          Write-Host "desktop:    $desktop"
+
+          # Registered for Add/Remove Programs, so it can be uninstalled.
+          $key = Get-ChildItem `
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' `
+            -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-ItemProperty $_.PSPath } |
+            Where-Object { $_.DisplayName -eq 'Church Management' }
+          if (-not $key) {
+            throw "NOT REGISTERED in Add/Remove Programs"
+          }
+          Write-Host "uninstall:  $($key.UninstallString)"
+
+          # The shortcut must carry the app icon, not a generic one.
+          $shell = New-Object -ComObject WScript.Shell
+          $lnk = $shell.CreateShortcut($desktop)
+          Write-Host "icon:       $($lnk.IconLocation)"
+          Write-Host ""
+          Write-Host "Installer verified: installs, shortcuts created, uninstaller registered."
+        shell: pwsh
+
+      # This is the one to download. It installs to Program Files, adds Start
+      # Menu and desktop shortcuts, and registers an uninstaller.
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: church-management-windows-setup
+          name: INSTALLER-windows-setup-exe
           path: dist/*.exe
           if-no-files-found: error
 

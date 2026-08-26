@@ -27,6 +27,15 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#AppExe}
+UninstallDisplayName={#AppName}
+AppVerName={#AppName} {#AppVersion}
+; A visible install directory page, so it is obvious the app is being installed
+; to the machine rather than just run.
+DisableDirPage=no
+DisableProgramGroupPage=yes
+; Warn rather than silently fail if an older copy is running.
+CloseApplications=yes
+RestartApplications=no
 ; The setup .exe's own icon, and the one in Add/Remove Programs. Without this
 ; the installer ships with Inno Setup's generic icon even though the installed
 ; app is branded correctly.
@@ -39,8 +48,10 @@ VersionInfoVersion={#AppVersion}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; \
-  GroupDescription: "Additional shortcuts:"; Flags: unchecked
+; Ticked by default. This was `unchecked`, so anyone clicking straight through
+; setup ended up with no desktop icon and assumed nothing had been installed.
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; \
+  GroupDescription: "Shortcuts:"
 
 [Files]
 ; The entire Release folder: the .exe alone will not run without the DLLs
@@ -49,9 +60,15 @@ Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; \
   Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
+; WorkingDir matters: without it the app inherits whatever directory the
+; shortcut was launched from, which can break relative asset lookups.
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; \
+  WorkingDir: "{app}"; IconFilename: "{app}\{#AppExe}"; \
+  Comment: "Kingdom Grace Chapel management console"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; \
+  WorkingDir: "{app}"; IconFilename: "{app}\{#AppExe}"; \
+  Comment: "Kingdom Grace Chapel management console"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Start {#AppName}"; \
