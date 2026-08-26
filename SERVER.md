@@ -245,9 +245,10 @@ Mobile is unblocked after phase 4 — same API, `flutter create --platforms=andr
 
 ## 8. The risk that is not code
 
-The server is a laptop in Accra. In an online-only design its uptime becomes
-every branch's uptime, and each of these independently stops the church recording
-a Sunday service:
+The server is a laptop in Accra, and the branches are in **other towns**. In an
+online-only design that laptop's uptime becomes every branch's uptime, and each
+of these independently stops a branch recording a Sunday service — in a town
+where nobody can walk over and check the machine:
 
 - power cut (dumsor) at that location
 - MTN outage
@@ -257,11 +258,25 @@ a Sunday service:
 Mitigations: a UPS, mobile-data failover, `restart: unless-stopped` on every
 container, the tunnel as a Windows service, and disabling suspend-on-lid-close.
 
-Two alternatives worth weighing honestly:
+**The branches are in other towns.** That rules out the otherwise-attractive
+option of keeping the server on the church LAN: a laptop on a switch in Accra is
+unreachable from Kumasi or Tema, so the tunnel is not optional — it is the whole
+mechanism. It also means every branch's Sunday depends on one building's power
+and one ISP connection.
 
-- **Put the laptop in the church, on the church LAN.** Sunday then depends on a
-  switch and a UPS in the same room as the people using it. CGNAT, home internet
-  and home power all stop mattering. Remote access can be added afterwards.
-- **A small VPS (~$5–6/month).** Removes power, connectivity and uptime risk
-  entirely and gives a static IP. It costs money and is not "a laptop I own", but
-  it dissolves most of this section.
+Which leaves one honest alternative:
+
+- **A small VPS (~$5–6/month).** Hetzner, DigitalOcean, or a Ghanaian host. It
+  removes power cuts, home-internet outages, CGNAT and the dynamic IP in one go,
+  and gives a real static address with proper HTTPS. It is not "a laptop I own"
+  and it costs money — but with branches spread across towns, the laptop is a
+  single point of failure for the whole church, sitting in the one place nobody
+  using it can see.
+
+  Cost comparison over a year: a VPS is roughly GH₵900–1,100. A UPS large enough
+  to keep a laptop, router and modem running through a long outage is comparable,
+  and does nothing about an ISP failure.
+
+If the laptop is the decision, put it wherever the internet is most reliable —
+not necessarily the church, and not necessarily a home — and treat the UPS and a
+mobile-data failover as part of the build, not extras.
