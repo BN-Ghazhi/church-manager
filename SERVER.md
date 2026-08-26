@@ -4,7 +4,8 @@ How to run the church's data on a Windows 10 laptop you own, with the desktop
 consoles and (later) mobile apps reading from it over the internet.
 
 Decisions already taken: **Docker on the Windows laptop**, a **Dart API server**
-reusing this app's own code, and **not Tailscale**.
+reusing this app's own code, **not Tailscale**, branches in **other towns**, and
+**offline writes that sync when the server returns**.
 
 ---
 
@@ -143,7 +144,89 @@ church back online without you after a reboot or an outage.
 
 ---
 
-## 4. The client keeps its shape
+## 4. Offline writes and sync
+
+The requirement: when the server is unreachable, the app keeps accepting data and
+sends it when the connection returns. That is the right call for branches in
+other towns with dumsor and patchy internet — a Sunday service cannot wait for a
+laptop in Accra — but it is also **the single largest piece of work here**, and it
+changes what has to be built before anything else.
+
+### What the schema already gives us
+
+Better than expected. 18 of the 21 tables carry `createdAt`, `updatedAt` and
+`deletedAt` through the `_Timestamps` mixin, and deletes are already soft (10
+`deletedAt` writes). That is most of what sync needs: a per-row watermark to ask
+"what changed since?", and deletions that survive as facts rather than absences.
+
+### The blocking problem: ids collide offline
+
+`_nextId` (`lib/db/repository.dart:20`) picks the next id by reading the highest
+existing one and adding 1. Offline, on two machines, that produces the same id.
+Demonstrated with two separate databases standing in for two branch laptops:
+
+```
+Kumasi created: mem-0001
+Tema created:   mem-0001
+COLLISION: true
+```
+
+On sync one of those two members silently overwrites the other. A real person
+disappears from the register, with no error anywhere. **Offline sync cannot be
+built on top of this**, so ids must become globally unique first — UUIDv7 or
+ULID, keeping the readable `mem-` prefix so seeded and imported data stay
+distinguishable.
+
+It is 16 call sites, all inside the repository, and only a handful of places pin
+the format (`test/widget_test.dart`, `test/migration_test.dart`,
+`lib/db/seeder.dart`). Cheap now with 2 members of real data; a foreign-key
+rewrite across 21 tables later.
+
+### Three tables cannot sync as they stand
+
+`DepartmentMembers`, `CheckIns` and `Settings` have no timestamps and are written
+by **hard delete then re-insert**:
+
+```dart
+// setDepartmentMembers - lib/db/repository.dart:681
+await (db.delete(db.departmentMembers)
+      ..where((t) => t.departmentId.equals(departmentId))).go();
+await db.batch((b) { b.insertAll(...); });
+```
+
+Locally that is fine. Across two machines it is a lost-update: whichever side
+syncs second replaces the whole membership list, discarding the other's edits
+with no conflict reported. These need row-level identity, timestamps and soft
+deletes before they can travel.
+
+### Conflict policy
+
+Needed per table, and it must be written down rather than emerge by accident:
+
+| Kind of data | Rule | Why |
+|---|---|---|
+| Attendance, giving, expenses | **Both survive** — they are events, not states | Two branches recording different services must never overwrite each other |
+| Member details, branch details | **Last write wins** on `updatedAt` | Two people editing one phone number: the later edit is the intended one |
+| Department membership, check-ins | **Merge by row**, not by list | The delete-and-replace pattern above is exactly what loses data |
+| Settings, permissions | **Server wins** | One church-wide truth; a stale offline client should not reimpose old settings |
+
+### What gets built
+
+```
+lib/sync/
+  outbox.dart       queued local writes, with retry and ordering
+  replicator.dart   pull changes since a per-table watermark
+  conflicts.dart    the table above, in code
+  connectivity.dart online / offline / syncing, surfaced in the UI
+```
+
+Plus an honest UI state: a persistent indicator showing "3 changes waiting to
+sync", because silently queueing writes and hoping is how a church discovers in
+March that February never uploaded.
+
+---
+
+## 5. The client keeps its shape
 
 The measurement that drives this: screens read **synchronous `List<T>`**, and
 there are **268 provider reads across 28 files**. Converting them to `AsyncValue`
@@ -156,7 +239,8 @@ by close to nothing, which is what `ARCHITECTURE.md` §2.1 calls the codebase's
 most valuable property.
 
 It also means the app still **opens and shows existing data** when the server is
-unreachable, which matters given power cuts. Only new writes are blocked.
+unreachable, which matters given power cuts — and with the outbox from §4, new
+records can still be entered and are sent when the connection returns.
 
 New client code:
 
@@ -172,7 +256,7 @@ across 15 files need no changes.**
 
 ---
 
-## 5. Security — the real cost
+## 6. Security — the real cost
 
 `lib/providers/permissions.dart` says it already:
 
@@ -206,17 +290,20 @@ Also required:
 
 ---
 
-## 6. Two changes worth making before any of this
+## 7. What must change first
 
 Cheap now, expensive later, and useful regardless of when the server happens.
 
-**Ids are not safe for two writers.** `_nextId` (`lib/db/repository.dart:20`)
-does `SELECT id ... ORDER BY id DESC LIMIT 1` then adds one. Two clients creating
-a member at the same moment compute the same id and the second insert fails —
-precisely the scenario a server enables. It is also wrong at scale: string
-ordering means `mem-9999` → `mem-10000` sorts *below* `mem-9999`, so the counter
-silently resets. 16 call sites. Migrating 2 members is trivial; migrating 2,000
-across 21 tables with foreign keys is not.
+**Ids must become globally unique.** Demonstrated in §4: two offline machines
+both produce `mem-0001`, and syncing loses one of the two members silently. This
+is a prerequisite for offline sync, not a nice-to-have. It is also wrong at scale
+independently: string ordering means `mem-9999` → `mem-10000` sorts *below*
+`mem-9999`, so the counter silently resets at 10,000 rows.
+
+**Three tables need sync metadata.** `DepartmentMembers`, `CheckIns` and
+`Settings` have no timestamps and are written by hard-delete-then-reinsert (§4).
+As they stand, a second machine's edits are discarded on sync with no conflict
+reported.
 
 **Brand images store absolute paths.** `lib/providers/branding.dart:85` saves
 `target.path` into the settings table. Once settings come from a server that path
@@ -224,31 +311,43 @@ names one machine's disk. Member photos use bare filenames and are fine.
 
 ---
 
-## 7. Phases, each ending in something testable
+## 8. Phases, each ending in something testable
 
 | Phase | What | Weeks |
 |---|---|---|
-| 0 | Prove the tunnel from the Windows laptop; Docker Desktop + WSL2 running; both restart after a forced power cut | 0.5–1 |
-| 1 | Extract `packages/churchms_core/`. **189 tests must still pass** | 1 |
-| 2 | Postgres + API + migration script + auth + **read** endpoints with server-side branch scoping | 2 |
-| 3 | **Milestone:** two machines, correctly scoped live data from the laptop, over the internet | 2 |
-| 4 | Writes, the 14 rules, real 4xx surfaced in forms | 3 |
-| 5 | Live push, photo upload with authorization | 2 |
-| 6 | Backups with a tested restore, audit log, rate limiting | 1–2 |
+| 0 | Prove the tunnel from the Windows laptop; Docker Desktop + WSL2; both restart after a forced power cut | 0.5–1 |
+| 1 | **UUID ids**, plus timestamps and soft deletes on the three tables that lack them. Nothing else can be built on the current ids | 1 |
+| 2 | Extract `packages/churchms_core/`. **189 tests must still pass** | 1 |
+| 3 | Postgres + API + migration + auth + **read** endpoints with server-side branch scoping | 2 |
+| 4 | **Milestone:** two machines, correctly scoped live data from the laptop, over the internet | 2 |
+| 5 | Writes, the 14 rules, real 4xx surfaced in forms | 3 |
+| 6 | **Offline outbox and sync**, with the conflict policy from §4 and a visible pending-changes indicator | 3–4 |
+| 7 | Photo upload with authorization; backups with a *tested* restore; audit log; rate limiting | 2 |
 
-**11–16 weeks part-time.** Phase 3 is the deliberate go/no-go: by then the real
-latency over your own connection is known.
+**15–20 weeks part-time**, up from 11–16 because offline sync is genuinely large.
+Phase 4 is the deliberate go/no-go: by then the real latency over your own
+connection is known, and the decision to continue is informed.
+
+Phase 1 is worth doing **whether or not the rest happens** — the id collision is
+a latent bug in the app today, and it gets more expensive with every member
+added.
 
 Mobile is unblocked after phase 4 — same API, `flutter create --platforms=android,ios .`
 
 ---
 
-## 8. The risk that is not code
+## 9. The risk that is not code
 
-The server is a laptop in Accra, and the branches are in **other towns**. In an
-online-only design that laptop's uptime becomes every branch's uptime, and each
-of these independently stops a branch recording a Sunday service — in a town
-where nobody can walk over and check the machine:
+The server is a laptop in Accra, and the branches are in **other towns**. Offline
+sync (§4) means an outage no longer stops a branch recording a service — which is
+exactly why it is worth the extra weeks. What an outage still costs:
+
+- nobody sees anyone else's data until the server returns
+- the longer it is down, the more conflicts accumulate to resolve
+- a branch cannot sign in for the first time, or on a new machine, while it is down
+
+And these still take the server down, in a town where nobody can walk over and
+check the machine:
 
 - power cut (dumsor) at that location
 - MTN outage
