@@ -143,6 +143,32 @@ jobs:
             throw "ICON LOOKS EMPTY: only $($ms.Length) bytes"
           }
 
+          # Prove the icon is OURS and not Flutter's default. Measured on both
+          # images: ours is a white cross on a near-black square (79% dark
+          # pixels, 0% blue); Flutter's is a blue logo on transparency (0% dark,
+          # 30% blue). A centre-pixel sample does NOT separate them, because the
+          # Flutter logo's centre is transparent — so count pixels instead.
+          $dark = 0; $blue = 0; $total = $bmp.Width * $bmp.Height
+          for ($x = 0; $x -lt $bmp.Width; $x++) {
+            for ($y = 0; $y -lt $bmp.Height; $y++) {
+              $c = $bmp.GetPixel($x, $y)
+              if ($c.A -gt 200) {
+                if ($c.R -lt 60 -and $c.G -lt 60 -and $c.B -lt 60) { $dark++ }
+                if ($c.B -gt $c.R + 40) { $blue++ }
+              }
+            }
+          }
+          $darkPct = [int]($dark * 100 / $total)
+          $bluePct = [int]($blue * 100 / $total)
+          Write-Host "icon dark:  $darkPct% (ours ~79%, Flutter's 0%)"
+          Write-Host "icon blue:  $bluePct% (ours 0%, Flutter's ~30%)"
+          if ($bluePct -gt 10) {
+            throw "THIS IS FLUTTER'S DEFAULT ICON, not the church icon"
+          }
+          if ($darkPct -lt 40) {
+            throw "ICON IS NOT THE CHURCH ICON (expected a dark square)"
+          }
+
           Write-Host ""
           Write-Host "Installer verified: installs to Program Files, shortcuts"
           Write-Host "created with the app icon, uninstaller registered."

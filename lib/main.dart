@@ -67,7 +67,7 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(database),
-        needsOnboardingProvider.overrideWithValue(needsSetup),
+        startupNeedsOnboardingProvider.overrideWithValue(needsSetup),
       ],
       child: startupError == null
           ? const ChurchApp()

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:go_router/go_router.dart';
 
 import '../config/app_config.dart';
 import '../providers/branding.dart';
@@ -229,8 +230,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     ),
                   ),
                 ),
-
-
+                const SizedBox(height: AppSpacing.md),
+                const _StaleDatabaseEscape(),
               ],
             ),
           ),
@@ -238,5 +239,72 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         ),
       ),
     );
+  }
+}
+
+/// A way out when the app asks you to sign in to an account you never made.
+///
+/// Records deliberately survive uninstalling — removing the program must not
+/// destroy the church's data. The consequence is that anyone who installed an
+/// earlier build, which shipped a default `admin` account, still has that
+/// database and so is shown the sign-in screen instead of first-run setup.
+/// Without this, there is no way past it: the credentials no longer exist
+/// anywhere and nobody can reach Settings to erase anything.
+class _StaleDatabaseEscape extends ConsumerWidget {
+  const _StaleDatabaseEscape();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Align(
+      alignment: Alignment.center,
+      child: TextButton.icon(
+        onPressed: () => _confirm(context, ref),
+        icon: const Icon(Icons.restart_alt, size: 15),
+        label: Text(
+          "Don't have an account? Start fresh",
+          style: theme.textTheme.labelSmall,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    final wipe = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set this church up from scratch?'),
+        content: const Text(
+          'Use this if the app is asking you to sign in to an account you never '
+          'created — records from a previous install are still on this computer.'
+          '\n\n'
+          'This permanently deletes every member, branch and record in that '
+          'database, then walks you through setup. It cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Erase and set up'),
+          ),
+        ],
+      ),
+    );
+
+    if (wipe != true || !context.mounted) return;
+
+    // resetToSeed wipes every table and re-seeds structure only, which leaves
+    // no account — exactly the state first-run setup expects.
+    await ref.read(databaseProvider).resetToSeed();
+    // The startup check cannot be re-run, so flag that setup is required —
+    // otherwise the router's redirect sends us straight back to sign-in.
+    ref.read(forceOnboardingProvider.notifier).require();
+    if (!context.mounted) return;
+    GoRouter.of(context).go('/setup');
   }
 }

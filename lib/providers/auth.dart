@@ -19,8 +19,33 @@ final databaseProvider = Provider<AppDatabase>(
 /// signs the new administrator in, which moves the redirect on, so this never
 /// needs to change after launch.
 final needsOnboardingProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(startupNeedsOnboardingProvider) ||
+      ref.watch(forceOnboardingProvider),
+);
+
+/// What the startup check found. Overridden in `main()`; read only through
+/// [needsOnboardingProvider].
+final startupNeedsOnboardingProvider = Provider<bool>(
   (ref) => throw StateError('needsOnboardingProvider must be overridden'),
 );
+
+/// Set when the user erases a leftover database from the sign-in screen.
+///
+/// The startup value cannot be recomputed — it is resolved once before
+/// `runApp` because the router's redirect is synchronous — so wiping mid-session
+/// needs a second signal, or the redirect would bounce straight back to
+/// sign-in.
+final forceOnboardingProvider =
+    NotifierProvider<ForceOnboardingNotifier, bool>(
+        ForceOnboardingNotifier.new);
+
+class ForceOnboardingNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void require() => state = true;
+}
 
 final repositoryProvider = Provider<ChurchRepository>(
   (ref) => ChurchRepository(ref.watch(databaseProvider)),
