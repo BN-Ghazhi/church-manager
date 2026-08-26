@@ -16,7 +16,11 @@ namespace {
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
-constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
+// Our own window class, not Flutter's default "FLUTTER_RUNNER_WIN32_WINDOW".
+// Windows keys the taskbar icon, window grouping and pinning on the class name,
+// so leaving it as Flutter's meant this app shared an identity with every other
+// Flutter app on the machine — and could show their icon rather than ours.
+constexpr const wchar_t kWindowClassName[] = L"KGC_CHURCH_MANAGEMENT_WINDOW";
 
 /// Registry key for app theme preference.
 ///
@@ -95,8 +99,14 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
     window_class.cbClsExtra = 0;
     window_class.cbWndExtra = 0;
     window_class.hInstance = GetModuleHandle(nullptr);
-    window_class.hIcon =
-        LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
+    // LoadIcon only ever returns a single system-metric size, which Windows
+    // then stretches. LoadImage asks for the large and small sizes explicitly,
+    // so the title bar, Alt-Tab and the taskbar each get a purpose-drawn frame
+    // out of the .ico rather than one scaled copy.
+    window_class.hIcon = static_cast<HICON>(LoadImage(
+        window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON), IMAGE_ICON,
+        GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON),
+        LR_DEFAULTCOLOR));
     window_class.hbrBackground = 0;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
@@ -142,6 +152,28 @@ bool Win32Window::Create(const std::wstring& title,
 
   if (!window) {
     return false;
+  }
+
+  // The window class only carries the large icon. Windows uses a separate
+  // small icon for the title bar and Alt-Tab, and falls back to a stretched
+  // large one — or a generic default — when it is not set. Setting both from
+  // the .ico means every place the icon appears gets the right frame.
+  HINSTANCE instance = GetModuleHandle(nullptr);
+  HICON large = static_cast<HICON>(
+      LoadImage(instance, MAKEINTRESOURCE(IDI_APP_ICON), IMAGE_ICON,
+                GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON),
+                LR_DEFAULTCOLOR));
+  HICON small_icon = static_cast<HICON>(
+      LoadImage(instance, MAKEINTRESOURCE(IDI_APP_ICON), IMAGE_ICON,
+                GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
+                LR_DEFAULTCOLOR));
+  if (large) {
+    SendMessage(window, WM_SETICON, ICON_BIG,
+                reinterpret_cast<LPARAM>(large));
+  }
+  if (small_icon) {
+    SendMessage(window, WM_SETICON, ICON_SMALL,
+                reinterpret_cast<LPARAM>(small_icon));
   }
 
   UpdateTheme(window);

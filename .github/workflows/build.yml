@@ -173,9 +173,23 @@ jobs:
             throw "ICON IS NOT THE CHURCH ICON (expected a dark square)"
           }
 
+          # No Flutter branding anywhere a user can see. The window class name
+          # is the sneaky one: Windows keys the taskbar icon and pinning on it,
+          # and Flutter's default is shared by every Flutter app on the machine.
+          $exeBytes = [System.IO.File]::ReadAllBytes($app)
+          $text = [System.Text.Encoding]::Unicode.GetString($exeBytes)
+          if ($text -match 'FLUTTER_RUNNER_WIN32_WINDOW') {
+            throw "EXE STILL USES FLUTTER'S WINDOW CLASS - taskbar icon may show Flutter's"
+          }
+          if ($text -notmatch 'KGC_CHURCH_MANAGEMENT_WINDOW') {
+            throw "OUR WINDOW CLASS IS MISSING from the exe"
+          }
+          Write-Host "win class:  KGC_CHURCH_MANAGEMENT_WINDOW (not Flutter's)"
+
           Write-Host ""
           Write-Host "Installer verified: installs to Program Files, shortcuts"
-          Write-Host "created with the app icon, uninstaller registered."
+          Write-Host "created with the app icon, uninstaller registered,"
+          Write-Host "no Flutter branding."
         shell: pwsh
 
       # This is the one to download. It installs to Program Files, adds Start
