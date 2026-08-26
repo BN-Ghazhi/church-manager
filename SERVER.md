@@ -9,6 +9,10 @@ reusing this app's own code, **not Tailscale**, branches in **other towns**, and
 
 ---
 
+> **Setting it up?** `SERVER-SETUP.md` is the step-by-step guide for the Windows
+> laptop, starting with a one-evening connectivity test. This document is the
+> architecture and the reasoning behind it.
+
 ## 1. The network constraint, measured
 
 Tested from the developer's connection (MTN/Scancom, Accra):

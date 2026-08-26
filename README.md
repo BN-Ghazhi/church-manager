@@ -31,6 +31,7 @@ Each install has its own database, so a branch working on its own laptop is
 See **[BRANCH-DATA.md](BRANCH-DATA.md)** for the three options and what each
 costs, and **[SERVER.md](SERVER.md)** for the planned server: a Windows laptop
 running Docker and a Dart API, reached through a tunnel.
+**[SERVER-SETUP.md](SERVER-SETUP.md)** is the step-by-step setup guide.
 
 ## One branch for now
 
