@@ -105,6 +105,20 @@ Realistically two to four weeks depending on how much offline support you want.
 
 ---
 
+## Update: a server is now planned
+
+Option 3 has been chosen, with specifics settled: a **Windows 10 laptop** running
+**Docker**, a **Dart API** sharing this app's own models and password hashing, and
+an **outbound tunnel** because the connection is behind CGNAT — see
+**[SERVER.md](SERVER.md)** for the measured network findings, the architecture and
+the phasing.
+
+Two things recorded there that change this document's assumptions: the developer's
+public IP is both **shared (CGNAT)** and **dynamic**, so port forwarding and
+dynamic DNS are both ruled out; and Supabase was rejected in favour of a Dart
+server, because the domain layer already runs on plain Dart and so the permission
+matrix and PBKDF2 hashing can be shared rather than reimplemented.
+
 ## My recommendation
 
 **If one office does the data entry:** stay with Option 1. It works today, and a

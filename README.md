@@ -29,7 +29,8 @@ Flutter 3.44 · Dart 3.12 · Drift/SQLite · Riverpod · go_router · fl_chart
 Each install has its own database, so a branch working on its own laptop is
 **not** visible to HQ — that needs either one shared machine or a server.
 See **[BRANCH-DATA.md](BRANCH-DATA.md)** for the three options and what each
-costs.
+costs, and **[SERVER.md](SERVER.md)** for the planned server: a Windows laptop
+running Docker and a Dart API, reached through a tunnel.
 
 ## One branch for now
 
