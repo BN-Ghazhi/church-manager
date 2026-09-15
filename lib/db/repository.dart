@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../config/permissions.dart' as config;
 import '../models/models.dart' as domain;
 import 'database.dart';
+import 'ids.dart';
 import 'password.dart';
 
 /// All reads and writes against the database.
@@ -16,20 +17,14 @@ class ChurchRepository {
 
   final AppDatabase db;
 
-  /// Generates the next id for a table, continuing the seeded `pre-0001` style.
-  Future<String> _nextId(String prefix, TableInfo table) async {
-    final rows = await db.customSelect(
-      'SELECT id FROM ${table.actualTableName} '
-      "WHERE id LIKE '$prefix-%' ORDER BY id DESC LIMIT 1",
-    ).get();
-
-    var next = 1;
-    if (rows.isNotEmpty) {
-      final last = rows.first.data['id'] as String;
-      next = (int.tryParse(last.split('-').last) ?? 0) + 1;
-    }
-    return '$prefix-${next.toString().padLeft(4, '0')}';
-  }
+  /// Generates an id that is unique across machines — see [Ids].
+  ///
+  /// Takes [table] and stays async only so the sixteen call sites did not all
+  /// have to change shape; neither is needed any more. Reading the highest
+  /// existing id to increment it was the bug: two laptops working offline both
+  /// produced `mem-0001`, and syncing lost one of the two records.
+  Future<String> _nextId(String prefix, TableInfo table) async =>
+      Ids.next(prefix);
 
   DateTime get _now => DateTime.now().toUtc();
 

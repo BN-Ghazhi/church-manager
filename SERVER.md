@@ -154,11 +154,11 @@ Better than expected. 18 of the 21 tables carry `createdAt`, `updatedAt` and
 `deletedAt` writes). That is most of what sync needs: a per-row watermark to ask
 "what changed since?", and deletions that survive as facts rather than absences.
 
-### The blocking problem: ids collide offline
+### The blocking problem: ids collide offline — **fixed**
 
-`_nextId` (`lib/db/repository.dart:20`) picks the next id by reading the highest
-existing one and adding 1. Offline, on two machines, that produces the same id.
-Demonstrated with two separate databases standing in for two branch laptops:
+`_nextId` used to pick the next id by reading the highest existing one and adding
+1. Offline, on two machines, that produced the same id. Demonstrated with two
+separate databases standing in for two branch laptops:
 
 ```
 Kumasi created: mem-0001
@@ -166,16 +166,27 @@ Tema created:   mem-0001
 COLLISION: true
 ```
 
-On sync one of those two members silently overwrites the other. A real person
-disappears from the register, with no error anywhere. **Offline sync cannot be
-built on top of this**, so ids must become globally unique first — UUIDv7 or
-ULID, keeping the readable `mem-` prefix so seeded and imported data stay
-distinguishable.
+On sync one of those two members would silently overwrite the other — a real
+person disappearing from the register with no error anywhere.
 
-It is 16 call sites, all inside the repository, and only a handful of places pin
-the format (`test/widget_test.dart`, `test/migration_test.dart`,
-`lib/db/seeder.dart`). Cheap now with 2 members of real data; a foreign-key
-rewrite across 21 tables later.
+**Replaced with ULIDs** (`lib/db/ids.dart`): 48 bits of millisecond timestamp
+plus 80 bits of secure randomness, in Crockford base32. Unique without any
+coordination, so a laptop can mint ids while disconnected — which is what makes
+offline writes possible at all. They still sort chronologically as text, the
+property the old zero-padded counter had and that several `ORDER BY id` queries
+rely on; a plain UUIDv4 would have lost it.
+
+```
+mem-01M2J41YGQ31REZRPK87G75Z5H
+```
+
+Existing records keep their old ids and need no migration — verified against the
+live database, where `mem-0001` and `mem-0002` sit alongside newly created ULIDs.
+The ids the seeder writes literally (`brn-0001`, `dpt-youth`) are also untouched,
+because they are never parsed.
+
+Covered by `test/ids_test.dart`, including the case that used to fail: two
+offline databases creating ten members each, then merged, with nothing lost.
 
 ### Three tables cannot sync as they stand
 
